@@ -13,9 +13,10 @@ validate_model <- function(ir) {
     return(list(errors = errors, warnings = warnings))
   }
 
-  # Every state must have an ODE expression
+  # Every state needs a non-empty ODE expression (IC is optional; defaults to "0")
   for (nm in names(ir$states)) {
-    if (is.null(ir$states[[nm]]$ode_expr)) {
+    expr <- ir$states[[nm]]$ode_expr
+    if (is.null(expr) || !nzchar(trimws(expr))) {
       errors <- c(errors, sprintf(
         "State '%s' has an initial condition but no ODE equation (d%s/dt = ...).", nm, nm
       ))
