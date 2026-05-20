@@ -44,7 +44,7 @@ parse_model <- function(source) {
     m <- regmatches(line, regexec("^(\\w+)\\[0\\]\\s*=\\s*(.+)$", line, perl = TRUE))[[1]]
     if (length(m) == 3L) {
       nm   <- m[2L]
-      expr <- trimws(sub("##.*$", "", m[3L], perl = TRUE))
+      expr <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
       if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, init_expr = NULL)
       ir$states[[nm]]$init_expr <- expr
       next
