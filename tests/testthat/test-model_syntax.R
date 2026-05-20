@@ -97,3 +97,8 @@ test_that("parse_model classifies unrecognised expr lines as auxiliary", {
   ir <- parse_model("dX/dt = X\ntotal = X + 1")
   expect_equal(ir$auxiliary$total, "X + 1")
 })
+
+test_that("parse_model strips trailing single # comment from ODE expression", {
+  ir <- parse_model("dX/dt = r * X # growth term")
+  expect_equal(ir$states$X$ode_expr, "r * X")
+})

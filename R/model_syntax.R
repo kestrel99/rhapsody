@@ -13,7 +13,7 @@ parse_model <- function(source) {
       description       = "",
       rhapsody_version  = as.character(utils::packageVersion("rhapsody"))
     ),
-    type       = "ode",
+    type       = NA_character_,
     states     = list(),
     parameters = list(),
     auxiliary  = list(),
@@ -30,11 +30,11 @@ parse_model <- function(source) {
     # 1. Skip blank lines and full-line comments (# or ##)
     if (nchar(line) == 0L || grepl("^#", line)) next
 
-    # 2. ODE: dX/dt = expr  (## inline comment stripped from expr)
+    # 2. ODE: dX/dt = expr  (# inline comment stripped from expr)
     m <- regmatches(line, regexec("^d(\\w+)/dt\\s*=\\s*(.+)$", line, perl = TRUE))[[1]]
     if (length(m) == 3L) {
       nm   <- m[2L]
-      expr <- trimws(sub("##.*$", "", m[3L], perl = TRUE))
+      expr <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
       if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, init_expr = "0")
       ir$states[[nm]]$ode_expr <- expr
       next
@@ -80,7 +80,7 @@ parse_model <- function(source) {
     m <- regmatches(line, regexec("^(\\w+)\\s*=\\s*(.+)$", line, perl = TRUE))[[1]]
     if (length(m) == 3L) {
       nm   <- m[2L]
-      expr <- trimws(sub("##.*$", "", m[3L], perl = TRUE))
+      expr <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
       ir$auxiliary[[nm]] <- expr
       next
     }
