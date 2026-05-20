@@ -8,7 +8,7 @@ Description: A domain-agnostic ODE simulator with a Shiny GUI,
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Imports:
     shiny (>= 1.7.0),
     bslib (>= 0.5.0),
