@@ -126,3 +126,21 @@ test_that("parse_model: mixed ODE + DDE sets type='mixed'", {
   ir <- parse_model("dX/dt = X\nY[t+1] = 1.1 * Y[t]")
   expect_equal(ir$type, "mixed")
 })
+
+test_that("parse_model: time-based event is parsed into ir$events", {
+  ir <- parse_model("dX/dt = 0\nX[0] = 10\nat(t == 50): X = X + 20")
+  expect_length(ir$events, 1L)
+  ev <- ir$events[[1]]
+  expect_equal(ev$type, "time")
+  expect_equal(ev$time, 50)
+  expect_equal(ev$var,  "X")
+  expect_equal(ev$expr, "X + 20")
+})
+
+test_that("parse_model: multiple events are all captured in order", {
+  m <- "dX/dt = 0\nX[0] = 10\nat(t == 20): X = 5\nat(t == 80): X = X * 2"
+  ir <- parse_model(m)
+  expect_length(ir$events, 2L)
+  expect_equal(ir$events[[2]]$time, 80)
+  expect_equal(ir$events[[2]]$expr, "X * 2")
+})

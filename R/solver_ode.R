@@ -51,10 +51,30 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda") {
     list(dydt)
   }
 
+  # Build deSolve events argument from ir$events (time-based only in Phase 3)
+  events_arg <- NULL
+  if (length(ir$events) > 0L) {
+    ev_times  <- vapply(ir$events, `[[`, numeric(1L), "time")
+    ev_parsed <- lapply(ir$events, function(ev) list(
+      var  = ev$var,
+      expr = parse(text = ev$expr)
+    ))
+    event_fn <- function(t, y, parms) {
+      env <- list2env(
+        c(as.list(parms), as.list(y), list(t = t)),
+        parent = safe_parent
+      )
+      for (ev in ev_parsed) y[ev$var] <- eval(ev$expr, envir = env)
+      y
+    }
+    events_arg <- list(func = event_fn, time = sort(unique(ev_times)))
+  }
+
   times <- seq(ir$time$t0, ir$time$tmax, by = ir$time$dt)
   out   <- deSolve::ode(
     y = y0, times = times, func = ode_fn,
-    parms = parms, method = method
+    parms = parms, method = method,
+    events = events_arg
   )
   out_df <- as.data.frame(out)
 

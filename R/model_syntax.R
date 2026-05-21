@@ -53,6 +53,24 @@ parse_model <- function(source) {
       next
     }
 
+    # 2c. Time-based event: at(t == value): var = expr
+    m <- regmatches(line, regexec(
+      "^at\\s*\\(\\s*t\\s*==\\s*([0-9.]+(?:[eE][+-]?[0-9]+)?)\\s*\\)\\s*:\\s*(\\w+)\\s*=\\s*(.+)$",
+      line, perl = TRUE
+    ))[[1]]
+    if (length(m) == 4L) {
+      t_val   <- as.numeric(m[2L])
+      var_nm  <- m[3L]
+      ev_expr <- trimws(sub("#.*$", "", m[4L], perl = TRUE))
+      ir$events[[length(ir$events) + 1L]] <- list(
+        type = "time",
+        time = t_val,
+        var  = var_nm,
+        expr = ev_expr
+      )
+      next
+    }
+
     # 3. Initial condition: X[0] = expr
     m <- regmatches(line, regexec("^(\\w+)\\[0\\]\\s*=\\s*(.+)$", line, perl = TRUE))[[1]]
     if (length(m) == 3L) {

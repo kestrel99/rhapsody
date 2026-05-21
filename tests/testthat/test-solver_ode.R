@@ -93,3 +93,28 @@ test_that("solve_ode: ics argument overrides IR initial conditions", {
   # With dX/dt = 0 the IC is preserved throughout
   expect_true(all(abs(override_run$X - 10) < 1e-6))
 })
+
+test_that("solve_ode applies time-based event: X = X + 20 at t=50", {
+  m <- paste(
+    "dX/dt = 0",
+    "X[0] = 10",
+    "tmax = 100",
+    "dt   = 10",
+    "at(t == 50): X = X + 20",
+    sep = "\n"
+  )
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  before <- result$X[result$time < 50]
+  after  <- result$X[result$time > 50]
+  expect_true(all(abs(before - 10) < 1e-6))
+  expect_true(all(abs(after  - 30) < 1e-6))
+})
+
+test_that("solve_ode applies assignment event: X = 99 at t=5", {
+  m <- "dX/dt = 0\nX[0] = 10\ntmax = 10\ndt = 1\nat(t == 5): X = 99"
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  after  <- result$X[result$time > 5]
+  expect_true(all(abs(after - 99) < 1e-6))
+})
