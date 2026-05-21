@@ -35,8 +35,21 @@ parse_model <- function(source) {
     if (length(m) == 3L) {
       nm   <- m[2L]
       expr <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
-      if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, init_expr = "0")
+      if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, disc_expr = NULL, init_expr = "0")
       ir$states[[nm]]$ode_expr <- expr
+      next
+    }
+
+    # 2b. Difference equation: X[t+1] = expr
+    m <- regmatches(line, regexec(
+      "^(\\w+)\\s*\\[\\s*t\\s*\\+\\s*1\\s*\\]\\s*=\\s*(.+)$", line, perl = TRUE
+    ))[[1]]
+    if (length(m) == 3L) {
+      nm        <- m[2L]
+      raw_rhs   <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
+      disc_expr <- gsub("(\\w+)\\[t\\]", "\\1", raw_rhs, perl = TRUE)
+      if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, disc_expr = NULL, init_expr = "0")
+      ir$states[[nm]]$disc_expr <- disc_expr
       next
     }
 
@@ -45,7 +58,7 @@ parse_model <- function(source) {
     if (length(m) == 3L) {
       nm   <- m[2L]
       expr <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
-      if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, init_expr = NULL)
+      if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, disc_expr = NULL, init_expr = NULL)
       ir$states[[nm]]$init_expr <- expr
       next
     }
@@ -86,7 +99,13 @@ parse_model <- function(source) {
     }
   }
 
-  if (length(ir$states) > 0L) ir$type <- "ode"
+  if (length(ir$states) > 0L) {
+    has_ode  <- any(vapply(ir$states, function(s) !is.null(s$ode_expr),  logical(1L)))
+    has_disc <- any(vapply(ir$states, function(s) !is.null(s$disc_expr), logical(1L)))
+    if      (has_ode && has_disc) ir$type <- "mixed"
+    else if (has_disc)             ir$type <- "dde"
+    else if (has_ode)              ir$type <- "ode"
+  }
   ir
 }
 

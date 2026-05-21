@@ -45,3 +45,15 @@ test_that("validate_model: error when tmax <= t0", {
   result <- validate_model(ir)
   expect_true(any(grepl("tmax", result$errors, ignore.case = TRUE)))
 })
+
+test_that("validate_model: DDE state with disc_expr is valid", {
+  ir <- parse_model("X[t+1] = 1.1 * X[t]\nX[0] = 1\ntmax = 10\ndt = 1")
+  errs <- validate_model(ir)
+  expect_length(errs$errors, 0L)
+})
+
+test_that("validate_model: mixed type is an error", {
+  ir <- parse_model("dX/dt = X\nY[t+1] = 1.1 * Y[t]")
+  errs <- validate_model(ir)
+  expect_true(any(grepl("Mixed", errs$errors, ignore.case = TRUE)))
+})

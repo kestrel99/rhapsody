@@ -102,3 +102,27 @@ test_that("parse_model strips trailing single # comment from ODE expression", {
   ir <- parse_model("dX/dt = r * X # growth term")
   expect_equal(ir$states$X$ode_expr, "r * X")
 })
+
+test_that("parse_model: X[t+1] line sets disc_expr and type='dde'", {
+  ir <- parse_model("X[t+1] = 1.1 * X[t]\nX[0] = 10")
+  expect_equal(ir$type, "dde")
+  expect_equal(ir$states$X$disc_expr, "1.1 * X")
+  expect_null(ir$states$X$ode_expr)
+})
+
+test_that("parse_model: substitutes all X[t] refs in disc_expr", {
+  ir <- parse_model("X[t+1] = r * X[t] * (1 - X[t] / K)\nr = 1.2\nK = 100\nX[0] = 10")
+  expect_equal(ir$states$X$disc_expr, "r * X * (1 - X / K)")
+})
+
+test_that("parse_model: multiple DDE states all get disc_expr", {
+  ir <- parse_model("X[t+1] = 1.1 * X[t]\nY[t+1] = 0.9 * Y[t]\nX[0] = 5\nY[0] = 3")
+  expect_equal(ir$type, "dde")
+  expect_false(is.null(ir$states$X$disc_expr))
+  expect_false(is.null(ir$states$Y$disc_expr))
+})
+
+test_that("parse_model: mixed ODE + DDE sets type='mixed'", {
+  ir <- parse_model("dX/dt = X\nY[t+1] = 1.1 * Y[t]")
+  expect_equal(ir$type, "mixed")
+})

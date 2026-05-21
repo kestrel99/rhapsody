@@ -1,0 +1,78 @@
+#' Run a difference-equation simulation from a parsed model IR
+#'
+#' Uses \code{deSolve::ode(method = "iteration")} for step-by-step recurrence.
+#' The disc_expr for each state already has X[t] replaced with X (done by
+#' parse_model()).
+#'
+#' @param ir Canonical IR list from parse_model() with type == "dde"
+#' @param params Named list of parameter overrides (optional)
+#' @param ics Named list of initial condition overrides (optional)
+#' @return data.frame with columns: time, one per state, one per auxiliary
+#' @export
+solve_discrete <- function(ir, params = NULL, ics = NULL) {
+  state_names <- names(ir$states)
+
+  parms <- lapply(ir$parameters, `[[`, "value")
+  names(parms) <- names(ir$parameters)
+  if (!is.null(params)) {
+    for (nm in names(params)) parms[[nm]] <- params[[nm]]
+  }
+
+  safe_parent <- new.env(parent = baseenv())
+  param_env   <- list2env(parms, parent = safe_parent)
+
+  y0 <- vapply(state_names, function(nm) {
+    if (!is.null(ics) && !is.null(ics[[nm]])) return(as.numeric(ics[[nm]]))
+    ic <- ir$states[[nm]]$init_expr %||% "0"
+    tryCatch(
+      eval(parse(text = ic), envir = param_env),
+      error = function(e) stop(
+        "Error evaluating initial condition for '", nm, "': ",
+        conditionMessage(e)
+      )
+    )
+  }, numeric(1L))
+  names(y0) <- state_names
+
+  disc_parsed <- lapply(ir$states, function(s) parse(text = s$disc_expr))
+
+  disc_fn <- function(t, y, parms) {
+    env <- list2env(
+      c(as.list(parms), as.list(y), list(t = t)),
+      parent = safe_parent
+    )
+    y_new <- vapply(disc_parsed, eval, numeric(1L), envir = env)
+    list(y_new)
+  }
+
+  times <- seq(ir$time$t0, ir$time$tmax, by = ir$time$dt)
+  out   <- deSolve::ode(
+    y = y0, times = times, func = disc_fn,
+    parms = parms, method = "iteration"
+  )
+  out_df <- as.data.frame(out)
+
+  if (length(ir$auxiliary) > 0L) {
+    aux_parsed <- lapply(ir$auxiliary, function(expr) parse(text = expr))
+    aux_mat <- matrix(
+      NA_real_,
+      nrow     = nrow(out_df),
+      ncol     = length(ir$auxiliary),
+      dimnames = list(NULL, names(ir$auxiliary))
+    )
+    for (i in seq_len(nrow(out_df))) {
+      row_env <- list2env(
+        c(as.list(parms),
+          as.list(out_df[i, state_names, drop = FALSE]),
+          list(t = out_df$time[i])),
+        parent = safe_parent
+      )
+      aux_mat[i, ] <- vapply(
+        aux_parsed, eval, numeric(1L), envir = row_env
+      )
+    }
+    out_df <- cbind(out_df, as.data.frame(aux_mat))
+  }
+
+  out_df
+}

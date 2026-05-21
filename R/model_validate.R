@@ -13,12 +13,19 @@ validate_model <- function(ir) {
     return(list(errors = errors, warnings = warnings))
   }
 
-  # Every state needs a non-empty ODE expression (IC is optional; defaults to "0")
+  # Mixed-type model cannot be solved
+  if (isTRUE(ir$type == "mixed")) {
+    errors <- c(errors,
+      "Mixed ODE and difference equation models are not supported. Use d/dt or [t+1] syntax, not both.")
+    return(list(errors = errors, warnings = warnings))
+  }
+
   for (nm in names(ir$states)) {
-    expr <- ir$states[[nm]]$ode_expr
-    if (is.null(expr) || !nzchar(trimws(expr))) {
+    has_ode  <- !is.null(ir$states[[nm]]$ode_expr)  && nzchar(trimws(ir$states[[nm]]$ode_expr))
+    has_disc <- !is.null(ir$states[[nm]]$disc_expr) && nzchar(trimws(ir$states[[nm]]$disc_expr))
+    if (!has_ode && !has_disc) {
       errors <- c(errors, sprintf(
-        "State '%s' has an initial condition but no ODE equation (d%s/dt = ...).", nm, nm
+        "State '%s' has no equation (d%s/dt = ... or %s[t+1] = ...).", nm, nm, nm
       ))
     }
   }
