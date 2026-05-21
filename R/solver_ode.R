@@ -2,10 +2,13 @@
 #'
 #' @param ir Canonical IR list from parse_model()
 #' @param params Named list of parameter overrides (optional)
+#' @param ics Named list of initial condition overrides (optional).
+#'   Values must be numeric scalars; names must match state names in `ir`.
 #' @param method deSolve method string; default "lsoda"
-#' @return data.frame with columns: time, and one column per state variable
+#' @return data.frame with columns: time, one per state variable,
+#'   and one per auxiliary variable (in declaration order)
 #' @export
-solve_ode <- function(ir, params = NULL, method = "lsoda") {
+solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda") {
   state_names <- names(ir$states)
 
   # Build parameter list: IR defaults, then any caller overrides
@@ -19,9 +22,12 @@ solve_ode <- function(ir, params = NULL, method = "lsoda") {
   # session state or calling arbitrary package functions
   safe_parent <- new.env(parent = baseenv())
 
-  # Evaluate initial conditions in the parameter environment
+  # Evaluate initial conditions: ics overrides take priority, then IR expr
   param_env <- list2env(parms, parent = safe_parent)
   y0 <- vapply(state_names, function(nm) {
+    if (!is.null(ics) && !is.null(ics[[nm]])) {
+      return(as.numeric(ics[[nm]]))
+    }
     ic <- ir$states[[nm]]$init_expr %||% "0"
     tryCatch(
       eval(parse(text = ic), envir = param_env),
@@ -50,7 +56,30 @@ solve_ode <- function(ir, params = NULL, method = "lsoda") {
     y = y0, times = times, func = ode_fn,
     parms = parms, method = method
   )
-  as.data.frame(out)
+  out_df <- as.data.frame(out)
+
+  # Evaluate auxiliary variables row-by-row from solved state values
+  if (length(ir$auxiliary) > 0L) {
+    aux_parsed <- lapply(ir$auxiliary, function(expr) parse(text = expr))
+    aux_mat <- matrix(
+      NA_real_,
+      nrow     = nrow(out_df),
+      ncol     = length(ir$auxiliary),
+      dimnames = list(NULL, names(ir$auxiliary))
+    )
+    for (i in seq_len(nrow(out_df))) {
+      row_env <- list2env(
+        c(as.list(parms),
+          as.list(out_df[i, state_names, drop = FALSE]),
+          list(t = out_df$time[i])),
+        parent = safe_parent
+      )
+      aux_mat[i, ] <- vapply(aux_parsed, eval, numeric(1L), envir = row_env)
+    }
+    out_df <- cbind(out_df, as.data.frame(aux_mat))
+  }
+
+  out_df
 }
 
 #' @noRd

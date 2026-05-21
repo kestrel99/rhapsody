@@ -58,3 +58,38 @@ test_that("solve_ode handles two-state Lotka-Volterra without crashing", {
   expect_true(all(result$Y > 0))
   expect_true(all(c("time", "X", "Y") %in% names(result)))
 })
+
+test_that("solve_ode includes auxiliary variable columns in output", {
+  model <- paste(
+    "dX/dt = 0",
+    "X[0] = 5",
+    "tmax = 2",
+    "dt = 1",
+    "doubled = X * 2",
+    sep = "\n"
+  )
+  ir     <- parse_model(model)
+  result <- solve_ode(ir)
+  expect_true("doubled" %in% names(result))
+  # X stays at 5, so doubled = 10 at every row
+  expect_true(all(abs(result$doubled - 10) < 1e-6))
+})
+
+test_that("solve_ode auxiliary uses current state values (not derivatives)", {
+  # dX/dt = X means X grows; aux = X + 1 should track X
+  ir     <- parse_model("dX/dt = X\nX[0] = 1\ntmax = 1\ndt = 0.5\nxp1 = X + 1")
+  result <- solve_ode(ir)
+  # At t=0, X≈1, xp1≈2; at later rows xp1 = X + 1 must hold exactly
+  expect_true(all(abs(result$xp1 - (result$X + 1)) < 1e-6))
+})
+
+test_that("solve_ode: ics argument overrides IR initial conditions", {
+  # IR has X[0] = 1; pass ics = list(X = 10)
+  ir           <- parse_model("dX/dt = 0\nX[0] = 1\ntmax = 2\ndt = 1")
+  default_run  <- solve_ode(ir)
+  override_run <- solve_ode(ir, ics = list(X = 10))
+  expect_true(abs(default_run$X[1]  -  1) < 1e-6)
+  expect_true(abs(override_run$X[1] - 10) < 1e-6)
+  # With dX/dt = 0 the IC is preserved throughout
+  expect_true(all(abs(override_run$X - 10) < 1e-6))
+})
