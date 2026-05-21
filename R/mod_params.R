@@ -40,6 +40,19 @@ mod_params_ui <- function(id) {
 mod_params_server <- function(id, ir) {
   shiny::moduleServer(id, function(input, output, session) {
 
+    # ── Helper: evaluate an IC expression against current param values ──
+    init_val_for <- function(nm) {
+      ic_expr <- ir()$states[[nm]]$init_expr %||% "0"
+      direct <- suppressWarnings(as.numeric(ic_expr))
+      if (!is.na(direct)) return(direct)
+      parms <- lapply(ir()$parameters, `[[`, "value")
+      tryCatch(
+        eval(parse(text = ic_expr), envir = list2env(parms, parent = baseenv())),
+        error   = function(e) 0,
+        warning = function(w) 0
+      )
+    }
+
     # ── Dynamic parameter UI ──────────────────────────────────
     output$param_ui <- shiny::renderUI({
       shiny::req(ir())
@@ -77,11 +90,7 @@ mod_params_server <- function(id, ir) {
     output$ic_ui <- shiny::renderUI({
       shiny::req(ir())
       lapply(names(ir()$states), function(nm) {
-        init_val <- tryCatch(
-          as.numeric(ir()$states[[nm]]$init_expr %||% "0"),
-          warning = function(w) 0,
-          error   = function(e) 0
-        )
+        init_val <- init_val_for(nm)
         shiny::div(
           class = "d-flex align-items-center gap-2 px-2 mb-1",
           shiny::tags$label(
@@ -100,28 +109,32 @@ mod_params_server <- function(id, ir) {
     })
 
     # ── Bidirectional slider ↔ numeric sync ───────────────────
-    # Sets up two observers per parameter each time the IR changes.
-    # Old observers from previous IR survive but their input IDs no
-    # longer exist in the DOM, so they never fire — effectively inert.
+    # Tracks observer handles so old observers are destroyed before
+    # new ones are created, preventing unbounded accumulation across
+    # model edits.
+    sync_obs <- list()
+
     shiny::observe({
       shiny::req(ir())
+      # Destroy previous observers before creating new ones
+      for (obs in sync_obs) try(obs$destroy(), silent = TRUE)
+      sync_obs <<- list()
+
       pnames <- names(ir()$parameters)
-      lapply(pnames, function(nm) {
+      new_obs <- lapply(pnames, function(nm) {
         local({
           nm_      <- nm
           slider_  <- paste0("p_", nm_)
           numeric_ <- paste0("n_", nm_)
 
-          # Slider moved → update numeric display
-          shiny::observeEvent(input[[slider_]], {
+          obs1 <- shiny::observeEvent(input[[slider_]], {
             if (!isTRUE(all.equal(input[[slider_]], input[[numeric_]]))) {
               shiny::updateNumericInput(session, numeric_, value = input[[slider_]])
             }
           }, ignoreInit = TRUE)
 
-          # Numeric typed → clamp slider; retain exact value in numeric
-          shiny::observeEvent(input[[numeric_]], {
-            shiny::req(input[[numeric_]])
+          obs2 <- shiny::observeEvent(input[[numeric_]], {
+            shiny::req(!is.na(input[[numeric_]]))
             p_   <- ir()$parameters[[nm_]]
             rng_ <- .param_range(p_)
             clamped <- max(rng_$min, min(rng_$max, input[[numeric_]]))
@@ -129,8 +142,11 @@ mod_params_server <- function(id, ir) {
               shiny::updateSliderInput(session, slider_, value = clamped)
             }
           }, ignoreInit = TRUE)
+
+          list(obs1, obs2)
         })
       })
+      sync_obs <<- unlist(new_obs, recursive = FALSE)
     })
 
     # ── Collect current values (fallback to IR default if UI unready) ─
@@ -150,9 +166,7 @@ mod_params_server <- function(id, ir) {
       vals <- lapply(snames, function(nm) {
         v <- input[[paste0("ic_", nm)]]
         if (is.null(v)) {
-          suppressWarnings(
-            as.numeric(ir()$states[[nm]]$init_expr %||% "0")
-          )
+          init_val_for(nm)
         } else {
           v
         }
@@ -181,6 +195,9 @@ mod_params_server <- function(id, ir) {
   if (!is.na(param$range_min) && !is.na(param$range_max)) {
     return(list(min = param$range_min, max = param$range_max))
   }
-  val <- if (param$value == 0) 1 else abs(param$value)
-  list(min = signif(val / 10, 2), max = signif(val * 10, 2))
+  v <- param$value
+  if (v == 0) return(list(min = -10, max = 10))
+  lo <- signif(v * 10, 2)
+  hi <- signif(v / 10, 2)
+  list(min = min(lo, hi), max = max(lo, hi))
 }
