@@ -2,7 +2,8 @@
 app_server <- function(input, output, session) {
   model_code <- mod_editor_server("editor")
 
-  # Reactive IR — only updates when parse succeeds; keeps last valid IR on error
+  # Reactive IR — silences downstream on parse failure; last valid IR stays
+  # cached by Shiny's reactive caching until next successful parse.
   ir <- shiny::reactive({
     shiny::req(model_code())
     result <- tryCatch(parse_model(model_code()), error = function(e) NULL)
@@ -17,18 +18,22 @@ app_server <- function(input, output, session) {
   trigger <- shiny::reactiveVal(0L)
 
   shiny::observeEvent(input$run, {
-    trigger(shiny::isolate(trigger()) + 1L)
+    trigger(trigger() + 1L)
   })
 
+  # Live-mode observer: only fires when param/IC values actually change,
+  # not when Live is toggled. ignoreInit prevents a solve on startup.
   shiny::observe({
-    if (isTRUE(param_state$live_mode())) {
-      param_state$live_params()   # register dependency
-      param_state$live_ics()
-      trigger(shiny::isolate(trigger()) + 1L)
+    if (isTRUE(shiny::isolate(param_state$live_mode()))) {
+      trigger(trigger() + 1L)
     }
-  })
+  }) |> shiny::bindEvent(
+    param_state$live_params(),
+    param_state$live_ics(),
+    ignoreInit = TRUE
+  )
 
-  # Solve when triggered — passes current params and ICs from the panel
+  # Solve when triggered; ignoreInit prevents solving on startup (trigger=0).
   solve_result <- shiny::eventReactive(trigger(), {
     shiny::req(ir())
     tryCatch({
@@ -45,7 +50,7 @@ app_server <- function(input, output, session) {
     }, error = function(e) {
       structure(list(message = conditionMessage(e)), class = "rhapsody_error")
     })
-  }, ignoreNULL = TRUE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   mod_plot_server("plot", solve_result)
 }
