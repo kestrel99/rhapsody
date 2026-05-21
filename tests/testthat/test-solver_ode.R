@@ -1,0 +1,60 @@
+test_that("solve_ode returns a data.frame with a time column", {
+  ir <- parse_model("dX/dt = 0\nX[0] = 5\nt0 = 0\ntmax = 10\ndt = 1")
+  result <- solve_ode(ir)
+  expect_s3_class(result, "data.frame")
+  expect_true("time" %in% names(result))
+  expect_true("X" %in% names(result))
+})
+
+test_that("solve_ode: constant system stays at initial condition", {
+  # dX/dt = 0, X[0] = 5  ->  X(t) = 5 for all t
+  ir <- parse_model("dX/dt = 0\nX[0] = 5\nt0 = 0\ntmax = 10\ndt = 1")
+  result <- solve_ode(ir)
+  expect_true(all(abs(result$X - 5) < 1e-6))
+})
+
+test_that("solve_ode: exponential growth matches e^t at t=1", {
+  # dX/dt = X, X[0] = 1  ->  X(1) ~= e = 2.71828
+  ir <- parse_model("dX/dt = X\nX[0] = 1\nt0 = 0\ntmax = 1\ndt = 0.01")
+  result <- solve_ode(ir)
+  final_X <- tail(result$X, 1L)
+  expect_true(abs(final_X - exp(1)) < 0.01)
+})
+
+test_that("solve_ode: params argument overrides IR parameter values", {
+  # r = 0 -> flat; override r = 1 -> X grows to ~e at t=1
+  ir <- parse_model("dX/dt = r * X\nX[0] = 1\nr = 0\nt0 = 0\ntmax = 1\ndt = 0.01")
+  flat    <- solve_ode(ir)
+  growing <- solve_ode(ir, params = list(r = 1))
+  expect_true(tail(flat$X,    1L) < 1.001)
+  expect_true(tail(growing$X, 1L) > 2)
+})
+
+test_that("solve_ode: number of rows equals length of time sequence", {
+  ir <- parse_model("dX/dt = 0\nX[0] = 1\nt0 = 0\ntmax = 10\ndt = 1")
+  result <- solve_ode(ir)
+  expected_rows <- length(seq(0, 10, by = 1))
+  expect_equal(nrow(result), expected_rows)
+})
+
+test_that("solve_ode handles two-state Lotka-Volterra without crashing", {
+  model <- paste(
+    "dX/dt = r * X - a * X * Y",
+    "dY/dt = b * X * Y - m * Y",
+    "X[0] = 10",
+    "Y[0] = 2",
+    "r = 1.0",
+    "a = 0.1",
+    "b = 0.075",
+    "m = 1.5",
+    "tmax = 30",
+    "dt = 0.1",
+    sep = "\n"
+  )
+  ir <- parse_model(model)
+  result <- solve_ode(ir)
+  # Lotka-Volterra oscillates; both should remain positive
+  expect_true(all(result$X > 0))
+  expect_true(all(result$Y > 0))
+  expect_true(all(c("time", "X", "Y") %in% names(result)))
+})
