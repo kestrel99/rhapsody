@@ -12,11 +12,32 @@ app_ui <- function(request) {
         shiny::actionButton("run", "Run", class = "btn btn-primary btn-sm")
       ),
 
-      # ── Main split pane ──────────────────────────────────────
+      # ── 4-pane workspace ─────────────────────────────────────
       bslib::layout_columns(
         col_widths = c(5, 7),
-        shiny::div(class = "p-3", mod_editor_ui("editor")),
-        shiny::div(class = "p-3", mod_plot_ui("plot"))
+
+        # Left column: editor (fixed height) + scrollable params below
+        shiny::div(
+          style = paste(
+            "display: flex;",
+            "flex-direction: column;",
+            "height: calc(100vh - 58px);"
+          ),
+          shiny::div(
+            style = "flex: 0 0 auto; padding: 0.5rem 0.75rem;",
+            mod_editor_ui("editor")
+          ),
+          shiny::div(
+            style = "flex: 1 1 auto; overflow-y: auto;",
+            mod_params_ui("params")
+          )
+        ),
+
+        # Right column: plot (full height for now; tab panel added in Phase 3)
+        shiny::div(
+          class = "p-3",
+          mod_plot_ui("plot")
+        )
       )
     )
   )

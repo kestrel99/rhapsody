@@ -4,17 +4,21 @@
 \alias{solve_ode}
 \title{Run an ODE simulation from a parsed model IR}
 \usage{
-solve_ode(ir, params = NULL, method = "lsoda")
+solve_ode(ir, params = NULL, ics = NULL, method = "lsoda")
 }
 \arguments{
 \item{ir}{Canonical IR list from parse_model()}
 
 \item{params}{Named list of parameter overrides (optional)}
 
+\item{ics}{Named list of initial condition overrides (optional).
+Values must be numeric scalars; names must match state names in \code{ir}.}
+
 \item{method}{deSolve method string; default "lsoda"}
 }
 \value{
-data.frame with columns: time, and one column per state variable
+data.frame with columns: time, one per state variable,
+and one per auxiliary variable (in declaration order)
 }
 \description{
 Run an ODE simulation from a parsed model IR
