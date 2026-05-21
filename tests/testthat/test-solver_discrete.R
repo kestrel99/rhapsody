@@ -12,10 +12,12 @@ test_that("solve_discrete: geometric growth is exact", {
   expect_true(all(abs(result$X - 2^result$time) < 1e-9))
 })
 
-test_that("solve_discrete: ics override replaces IR initial condition", {
+test_that("solve_discrete: ics override replaces IR initial condition and propagates", {
   ir <- parse_model("X[t+1] = 2 * X[t]\nX[0] = 1\ntmax = 2\ndt = 1")
   result <- solve_discrete(ir, ics = list(X = 5))
+  # X doubles each step starting from 5: 5, 10, 20
   expect_equal(result$X[1], 5)
+  expect_true(all(abs(result$X - 5 * 2^result$time) < 1e-9))
 })
 
 test_that("solve_discrete: auxiliary columns included in output", {

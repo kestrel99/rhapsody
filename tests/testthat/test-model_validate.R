@@ -22,7 +22,7 @@ test_that("validate_model: error when no states defined", {
   ir <- parse_model("r = 1.2")
   result <- validate_model(ir)
   expect_true(length(result$errors) > 0L)
-  expect_match(result$errors[1L], "No ODE", ignore.case = TRUE)
+  expect_match(result$errors[1L], "No equations found", ignore.case = TRUE)
 })
 
 test_that("validate_model: error when state has IC but no ODE equation", {

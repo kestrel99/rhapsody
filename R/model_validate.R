@@ -9,7 +9,7 @@ validate_model <- function(ir) {
 
   # Must have at least one state
   if (length(ir$states) == 0L) {
-    errors <- c(errors, "No ODE equations found. Add at least one line like 'dX/dt = ...'.")
+    errors <- c(errors, "No equations found. Add at least one ODE (dX/dt = ...) or difference equation (X[t+1] = ...).")
     return(list(errors = errors, warnings = warnings))
   }
 

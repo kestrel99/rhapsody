@@ -47,7 +47,7 @@ parse_model <- function(source) {
     if (length(m) == 3L) {
       nm        <- m[2L]
       raw_rhs   <- trimws(sub("#.*$", "", m[3L], perl = TRUE))
-      disc_expr <- gsub("(\\w+)\\[t\\]", "\\1", raw_rhs, perl = TRUE)
+      disc_expr <- gsub("(\\w+)\\s*\\[\\s*t\\s*\\]", "\\1", raw_rhs, perl = TRUE)
       if (is.null(ir$states[[nm]])) ir$states[[nm]] <- list(ode_expr = NULL, disc_expr = NULL, init_expr = "0")
       ir$states[[nm]]$disc_expr <- disc_expr
       next
