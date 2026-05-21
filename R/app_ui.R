@@ -1,6 +1,4 @@
-#' Shiny application UI
-#' @param request Shiny request object (required by golem)
-#' @export
+#' @noRd
 app_ui <- function(request) {
   shiny::tagList(
     golem_add_external_resources(),

@@ -1,6 +1,4 @@
-#' Shiny application server
-#' @param input,output,session Standard Shiny server arguments
-#' @export
+#' @noRd
 app_server <- function(input, output, session) {
   model_code <- mod_editor_server("editor")
 
