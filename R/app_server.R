@@ -2,8 +2,6 @@
 app_server <- function(input, output, session) {
   model_code <- mod_editor_server("editor")
 
-  # Reactive IR — silences downstream on parse failure; last valid IR stays
-  # cached by Shiny's reactive caching until next successful parse.
   parse_error <- shiny::reactiveVal(NULL)
 
   ir <- shiny::reactive({
@@ -26,18 +24,15 @@ app_server <- function(input, output, session) {
     )
   })
 
-  # Parameter + IC panel wired to the live IR
-  param_state <- mod_params_server("params", ir)
+  param_state  <- mod_params_server("params",  ir)
+  solver_state <- mod_solver_server("solver")
 
-  # Unified solve trigger: incremented by Run button OR live param change
   trigger <- shiny::reactiveVal(0L)
 
   shiny::observeEvent(input$run, {
     trigger(trigger() + 1L)
   })
 
-  # Live-mode observer: only fires when param/IC values actually change,
-  # not when Live is toggled. ignoreInit prevents a solve on startup.
   shiny::observe({
     if (isTRUE(shiny::isolate(param_state$live_mode()))) {
       trigger(trigger() + 1L)
@@ -48,20 +43,31 @@ app_server <- function(input, output, session) {
     ignoreInit = TRUE
   )
 
-  # Solve when triggered; ignoreInit prevents solving on startup (trigger=0).
   solve_result <- shiny::eventReactive(trigger(), {
     shiny::req(ir())
     tryCatch({
-      ir_val <- ir()
-      errs   <- validate_model(ir_val)
+      ir_val  <- ir()
+      errs    <- validate_model(ir_val)
       if (length(errs$errors) > 0L) {
         stop(paste(errs$errors, collapse = "\n"))
       }
-      solve_ode(
-        ir     = ir_val,
-        params = param_state$params(),
-        ics    = param_state$ics()
-      )
+      cfg <- solver_state()
+      if (isTRUE(ir_val$type == "dde")) {
+        solve_discrete(
+          ir     = ir_val,
+          params = param_state$params(),
+          ics    = param_state$ics()
+        )
+      } else {
+        solve_ode(
+          ir     = ir_val,
+          params = param_state$params(),
+          ics    = param_state$ics(),
+          method = cfg$method,
+          atol   = cfg$atol,
+          rtol   = cfg$rtol
+        )
+      }
     }, error = function(e) {
       structure(list(message = conditionMessage(e)), class = "rhapsody_error")
     })

@@ -4,7 +4,14 @@
 \alias{solve_ode}
 \title{Run an ODE simulation from a parsed model IR}
 \usage{
-solve_ode(ir, params = NULL, ics = NULL, method = "lsoda")
+solve_ode(
+  ir,
+  params = NULL,
+  ics = NULL,
+  method = "lsoda",
+  atol = 1e-06,
+  rtol = 1e-06
+)
 }
 \arguments{
 \item{ir}{Canonical IR list from parse_model()}
@@ -15,6 +22,10 @@ solve_ode(ir, params = NULL, ics = NULL, method = "lsoda")
 Values must be numeric scalars; names must match state names in \code{ir}.}
 
 \item{method}{deSolve method string; default "lsoda"}
+
+\item{atol}{Absolute tolerance passed to deSolve; default 1e-6}
+
+\item{rtol}{Relative tolerance passed to deSolve; default 1e-6}
 }
 \value{
 data.frame with columns: time, one per state variable,

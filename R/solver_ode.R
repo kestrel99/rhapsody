@@ -5,10 +5,13 @@
 #' @param ics Named list of initial condition overrides (optional).
 #'   Values must be numeric scalars; names must match state names in `ir`.
 #' @param method deSolve method string; default "lsoda"
+#' @param atol Absolute tolerance passed to deSolve; default 1e-6
+#' @param rtol Relative tolerance passed to deSolve; default 1e-6
 #' @return data.frame with columns: time, one per state variable,
 #'   and one per auxiliary variable (in declaration order)
 #' @export
-solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda") {
+solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
+                      atol = 1e-6, rtol = 1e-6) {
   state_names <- names(ir$states)
 
   # Build parameter list: IR defaults, then any caller overrides
@@ -74,6 +77,7 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda") {
   out   <- deSolve::ode(
     y = y0, times = times, func = ode_fn,
     parms = parms, method = method,
+    atol = atol, rtol = rtol,
     events = events_arg
   )
   out_df <- as.data.frame(out)

@@ -16,7 +16,7 @@ app_ui <- function(request) {
       bslib::layout_columns(
         col_widths = c(5, 7),
 
-        # Left column: editor (fixed height) + scrollable params below
+        # Left column: editor + parse-error banner + scrollable params
         shiny::div(
           style = paste(
             "display: flex;",
@@ -34,10 +34,38 @@ app_ui <- function(request) {
           )
         ),
 
-        # Right column: plot (full height for now; tab panel added in Phase 3)
+        # Right column: plot (flex-grow) + tab panel (fixed)
         shiny::div(
-          class = "p-3",
-          mod_plot_ui("plot")
+          style = paste(
+            "display: flex;",
+            "flex-direction: column;",
+            "height: calc(100vh - 58px);"
+          ),
+          shiny::div(
+            style = "flex: 1 1 0; min-height: 0; padding: 0.75rem;",
+            mod_plot_ui("plot")
+          ),
+          shiny::div(
+            style = "flex: 0 0 auto; border-top: 1px solid #dee2e6;",
+            bslib::navset_tab(
+              bslib::nav_panel(
+                "Solver",
+                mod_solver_ui("solver")
+              ),
+              bslib::nav_panel(
+                "Scan",
+                shiny::p(class = "p-2 text-muted small", "Parameter scan — Phase 4")
+              ),
+              bslib::nav_panel(
+                "FFT",
+                shiny::p(class = "p-2 text-muted small", "FFT analysis — Phase 4")
+              ),
+              bslib::nav_panel(
+                "Steady-state",
+                shiny::p(class = "p-2 text-muted small", "Steady-state — Phase 4")
+              )
+            )
+          )
         )
       )
     )
