@@ -25,7 +25,8 @@ app_ui <- function(request) {
           ),
           shiny::div(
             style = "flex: 0 0 auto; padding: 0.5rem 0.75rem;",
-            mod_editor_ui("editor")
+            mod_editor_ui("editor"),
+            shiny::uiOutput("parse_error_ui")
           ),
           shiny::div(
             style = "flex: 1 1 auto; overflow-y: auto;",

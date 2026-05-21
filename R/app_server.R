@@ -4,11 +4,26 @@ app_server <- function(input, output, session) {
 
   # Reactive IR — silences downstream on parse failure; last valid IR stays
   # cached by Shiny's reactive caching until next successful parse.
+  parse_error <- shiny::reactiveVal(NULL)
+
   ir <- shiny::reactive({
     shiny::req(model_code())
-    result <- tryCatch(parse_model(model_code()), error = function(e) NULL)
+    result <- tryCatch(
+      { parse_error(NULL); parse_model(model_code()) },
+      error = function(e) { parse_error(conditionMessage(e)); NULL }
+    )
     shiny::req(!is.null(result))
     result
+  })
+
+  output$parse_error_ui <- shiny::renderUI({
+    err <- parse_error()
+    if (is.null(err)) return(NULL)
+    shiny::div(
+      class = "alert alert-danger mt-1 py-1 px-2 small",
+      role  = "alert",
+      err
+    )
   })
 
   # Parameter + IC panel wired to the live IR
