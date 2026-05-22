@@ -62,7 +62,7 @@ app_ui <- function(request) {
               ),
               bslib::nav_panel(
                 "Steady-state",
-                shiny::p(class = "p-2 text-muted small", "Steady-state — Phase 4")
+                mod_steadystate_ui("steadystate")
               )
             )
           )

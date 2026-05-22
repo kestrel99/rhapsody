@@ -74,4 +74,18 @@ app_server <- function(input, output, session) {
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   mod_plot_server("plot", solve_result)
+
+  ss_state <- mod_steadystate_server("steadystate", ir, param_state)
+
+  shiny::observeEvent(ss_state$use_as_ics(), {
+    ics <- ss_state$use_as_ics()
+    if (is.null(ics) || inherits(ics, "rhapsody_error")) return()
+    for (nm in names(ics)) {
+      shiny::updateNumericInput(
+        session  = session,
+        inputId  = paste0("params-ic_", nm),
+        value    = as.numeric(ics[[nm]])
+      )
+    }
+  })
 }
