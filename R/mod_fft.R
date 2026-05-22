@@ -9,6 +9,10 @@
 #' @return data.frame with columns \code{freq} and \code{magnitude}
 #' @export
 compute_fft_spectrum <- function(x, dt, window = "None", trim_frac = 0) {
+  if (!is.numeric(trim_frac) || length(trim_frac) != 1L ||
+        trim_frac < 0 || trim_frac >= 1) {
+    stop("trim_frac must be a single numeric value in [0, 1).")
+  }
   n_orig <- length(x)
   trim_n <- floor(trim_frac * n_orig)
   x      <- x[seq(trim_n + 1L, n_orig)]
@@ -16,11 +20,12 @@ compute_fft_spectrum <- function(x, dt, window = "None", trim_frac = 0) {
   if (n < 4L) stop("Insufficient data points for FFT after trimming.")
 
   w <- switch(window,
+    None     = rep(1, n),
     Hann     = 0.5 * (1 - cos(2 * pi * (0:(n - 1L)) / (n - 1L))),
     Hamming  = 0.54 - 0.46 * cos(2 * pi * (0:(n - 1L)) / (n - 1L)),
     Blackman = 0.42 - 0.5  * cos(2 * pi * (0:(n - 1L)) / (n - 1L)) +
-               0.08 * cos(4 * pi * (0:(n - 1L)) / (n - 1L)),
-    rep(1, n)   # "None" — rectangular
+      0.08 * cos(4 * pi * (0:(n - 1L)) / (n - 1L)),
+    stop("Unknown window function: ", window)
   )
 
   fft_out   <- fft(x * w)
@@ -42,7 +47,7 @@ find_fft_peaks <- function(spectrum_df, n_peaks = 10L) {
   n   <- length(mag)
   is_peak <- c(
     FALSE,
-    mag[-c(1L, n)] > mag[-c(n - 1L, n)] & mag[-c(1L, n)] > mag[-c(1L, 2L)],
+    mag[2:(n - 1L)] > mag[1:(n - 2L)] & mag[2:(n - 1L)] > mag[3:n],
     FALSE
   )
   is_peak[1L] <- FALSE   # exclude DC component
@@ -95,6 +100,7 @@ mod_fft_ui <- function(id) {
 #' @param id Module namespace id
 #' @param solve_result Reactive returning a data.frame (solve output) or
 #'   an object of class "rhapsody_error"
+#' @return Invisibly NULL (called for its side effects — renders spectrum plot and peaks table)
 #' @export
 mod_fft_server <- function(id, solve_result) {
   shiny::moduleServer(id, function(input, output, session) {
@@ -111,7 +117,8 @@ mod_fft_server <- function(id, solve_result) {
       res <- solve_result()
       shiny::req(is.data.frame(res), input$variable %in% names(res))
       x  <- res[[input$variable]]
-      dt <- if (nrow(res) > 1L) res$time[2L] - res$time[1L] else 1
+      shiny::req(nrow(res) > 1L)
+      dt <- res$time[2L] - res$time[1L]
       compute_fft_spectrum(
         x         = x,
         dt        = dt,

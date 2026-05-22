@@ -29,3 +29,18 @@ test_that("find_fft_peaks: detects two distinct frequency peaks", {
   expect_true(any(abs(peaks$Frequency - 5)  < 0.5))
   expect_true(any(abs(peaks$Frequency - 12) < 0.5))
 })
+
+test_that("find_fft_peaks: returns empty data.frame when no local maxima exist", {
+  # Monotonically increasing spectrum has no interior peaks
+  spec <- data.frame(freq = 0:9 / 10, magnitude = as.numeric(0:9))
+  peaks <- find_fft_peaks(spec)
+  expect_equal(nrow(peaks), 0L)
+})
+
+test_that("compute_fft_spectrum: stops with clear error when trim_frac is out of range", {
+  x <- sin(2 * pi * (0:99) / 10)
+  expect_error(compute_fft_spectrum(x, dt = 0.1, trim_frac = 1.0),
+               "trim_frac must be")
+  expect_error(compute_fft_spectrum(x, dt = 0.1, trim_frac = -0.1),
+               "trim_frac must be")
+})
