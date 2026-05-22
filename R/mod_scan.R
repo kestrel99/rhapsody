@@ -61,7 +61,7 @@ mod_scan_server <- function(id, ir, param_state) {
     })
 
     shiny::observeEvent(input$run_scan, {
-      shiny::req(ir(), input$scan_param, input$from, input$to, input$steps)
+      shiny::req(ir(), input$scan_param, input$from, input$to, input$steps, input$scan_vars)
       scan_error(NULL)
       spec <- list(
         parameter = input$scan_param,

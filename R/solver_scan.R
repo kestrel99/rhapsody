@@ -22,10 +22,17 @@ scan_params <- function(ir, params = NULL, ics = NULL, scan_spec) {
   param_nm  <- scan_spec$parameter
   from_val  <- scan_spec$from
   to_val    <- scan_spec$to
-  steps     <- as.integer(scan_spec$steps)
+  steps     <- scan_spec$steps   # caller already ensures integer
   log_scale <- isTRUE(scan_spec$log_scale)
 
+  if (!param_nm %in% names(ir$parameters)) {
+    stop("Parameter '", param_nm, "': not found in model.")
+  }
+
   param_values <- if (log_scale) {
+    if (from_val <= 0 || to_val <= 0) {
+      stop("Log scale requires strictly positive 'from' and 'to' values.")
+    }
     exp(seq(log(from_val), log(to_val), length.out = steps))
   } else {
     seq(from_val, to_val, length.out = steps)

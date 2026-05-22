@@ -29,3 +29,15 @@ test_that("scan_params: log_scale=TRUE uses geometric spacing", {
   out <- scan_params(ir, scan_spec = list(parameter="r", from=1, to=100, steps=3, log_scale=TRUE))
   expect_equal(out$param_values, c(1, 10, 100), tolerance = 1e-6)
 })
+
+test_that("scan_params: log_scale with non-positive from raises an error", {
+  ir <- parse_model("dX/dt = r*X\nX[0]=1\nr=1\nt0=0\ntmax=1\ndt=0.1")
+  expect_error(
+    scan_params(ir, scan_spec = list(parameter="r", from=-1, to=2, steps=3, log_scale=TRUE)),
+    "Log scale requires strictly positive"
+  )
+  expect_error(
+    scan_params(ir, scan_spec = list(parameter="r", from=0, to=2, steps=3, log_scale=TRUE)),
+    "Log scale requires strictly positive"
+  )
+})
