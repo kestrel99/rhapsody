@@ -27,7 +27,7 @@ solve_steady <- function(ir, params = NULL, ics = NULL,
     tryCatch(
       eval(parse(text = ic), envir = param_env),
       error = function(e) {
-        stop("Error evaluating IC for '", nm, "': ", conditionMessage(e))
+        stop("Error evaluating initial condition for '", nm, "': ", conditionMessage(e))
       }
     )
   }, numeric(1L))

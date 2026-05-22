@@ -75,8 +75,10 @@ mod_steadystate_server <- function(id, ir, param_state) {
       )
     })
 
-    use_as_ics_rv <- shiny::eventReactive(input$use_as_ics, {
-      ss_result()
+    use_as_ics_rv <- shiny::reactiveVal(NULL)
+
+    shiny::observeEvent(input$use_as_ics, {
+      use_as_ics_rv(ss_result())
     }, ignoreNULL = TRUE)
 
     list(use_as_ics = use_as_ics_rv)

@@ -82,9 +82,9 @@ app_server <- function(input, output, session) {
     if (is.null(ics) || inherits(ics, "rhapsody_error")) return()
     for (nm in names(ics)) {
       shiny::updateNumericInput(
-        session  = session,
-        inputId  = paste0("params-ic_", nm),
-        value    = as.numeric(ics[[nm]])
+        session = session,
+        inputId = paste0("params-ic_", nm),
+        value   = as.numeric(ics[[nm]])
       )
     }
   })
