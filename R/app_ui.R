@@ -58,7 +58,7 @@ app_ui <- function(request) {
               ),
               bslib::nav_panel(
                 "FFT",
-                shiny::p(class = "p-2 text-muted small", "FFT analysis — Phase 4")
+                mod_fft_ui("fft")
               ),
               bslib::nav_panel(
                 "Steady-state",
