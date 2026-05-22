@@ -54,7 +54,7 @@ app_ui <- function(request) {
               ),
               bslib::nav_panel(
                 "Scan",
-                shiny::p(class = "p-2 text-muted small", "Parameter scan — Phase 4")
+                mod_scan_ui("scan")
               ),
               bslib::nav_panel(
                 "FFT",

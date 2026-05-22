@@ -90,4 +90,5 @@ app_server <- function(input, output, session) {
   })
 
   mod_fft_server("fft", solve_result)
+  mod_scan_server("scan", ir, param_state)
 }
