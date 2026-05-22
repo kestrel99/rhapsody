@@ -27,3 +27,17 @@ test_that("solve_steady: stode method matches runsteady for damped linear", {
   expect_false(inherits(result, "rhapsody_error"))
   expect_equal(as.numeric(result["X"]), 10, tolerance = 1e-4)
 })
+
+test_that("solve_steady: ics override sets starting point (SS unchanged)", {
+  ir <- parse_model("dX/dt = -X + a\nX[0]=1\na=10\nt0=0\ntmax=100\ndt=0.1")
+  result <- solve_steady(ir, ics = list(X = 50))
+  # SS is still X=a=10 regardless of starting point
+  expect_equal(as.numeric(result["X"]), 10, tolerance = 1e-4)
+})
+
+test_that("solve_steady: returns rhapsody_error on invalid ODE expression", {
+  ir <- parse_model("dX/dt = undefined_var * X\nX[0]=1\na=10\nt0=0\ntmax=100\ndt=0.1")
+  result <- solve_steady(ir)
+  expect_s3_class(result, "rhapsody_error")
+  expect_true(nchar(result$message) > 0L)
+})

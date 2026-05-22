@@ -52,7 +52,9 @@ solve_steady <- function(ir, params = NULL, ics = NULL,
     }
 
     ss <- if (method == "stode") {
-      rootSolve::stode(y = y0, func = ode_fn, parms = parms, positive = FALSE)
+      rootSolve::stode(y = y0, func = ode_fn, parms = parms,
+                       rtol = stol, atol = stol, ctol = stol,
+                       positive = FALSE)
     } else {
       rootSolve::runsteady(
         y = y0, times = c(ir$time$t0, Inf),
