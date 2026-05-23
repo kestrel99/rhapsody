@@ -32,3 +32,10 @@ test_that("solve_discrete: tmax override shortens the simulation", {
   result <- solve_discrete(ir, tmax = 5)
   expect_equal(max(result$time), 5)
 })
+
+test_that("solve_discrete: t0 override shifts the start time", {
+  ir <- parse_model("X[t+1] = X[t] * 1.1\nX[0] = 10\nt0 = 0\ntmax = 10\ndt = 1")
+  result <- solve_discrete(ir, t0 = 3, tmax = 6, dt = 1)
+  expect_equal(min(result$time), 3)
+  expect_equal(max(result$time), 6)
+})

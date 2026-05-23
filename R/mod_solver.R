@@ -1,5 +1,7 @@
 #' Solver settings module — UI
 #'
+#' Renders integration method, tolerance, and time-range (t0/tmax/dt) controls.
+#'
 #' @param id Module namespace id
 #' @export
 mod_solver_ui <- function(id) {

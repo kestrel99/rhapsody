@@ -52,6 +52,10 @@ app_server <- function(input, output, session) {
         stop(paste(errs$errors, collapse = "\n"))
       }
       cfg <- solver_state()
+      if (!is.finite(cfg$t0) || !is.finite(cfg$tmax) || !is.finite(cfg$dt) ||
+          cfg$dt <= 0 || cfg$tmax <= cfg$t0) {
+        stop("Invalid solver time settings: t0 must be finite, dt must be positive, and tmax must be greater than t0.")
+      }
       if (isTRUE(ir_val$type == "dde")) {
         solve_discrete(
           ir     = ir_val,
