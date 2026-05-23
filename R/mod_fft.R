@@ -45,6 +45,10 @@ compute_fft_spectrum <- function(x, dt, window = "None", trim_frac = 0) {
 find_fft_peaks <- function(spectrum_df, n_peaks = 10L) {
   mag <- spectrum_df$magnitude
   n   <- length(mag)
+  if (n < 3L) {
+    return(data.frame(Frequency = numeric(0L), Magnitude = numeric(0L),
+                      Period = numeric(0L)))
+  }
   is_peak <- c(
     FALSE,
     mag[2:(n - 1L)] > mag[1:(n - 2L)] & mag[2:(n - 1L)] > mag[3:n],

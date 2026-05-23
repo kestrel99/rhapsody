@@ -35,6 +35,13 @@ test_that("solve_steady: ics override sets starting point (SS unchanged)", {
   expect_equal(as.numeric(result["X"]), 10, tolerance = 1e-4)
 })
 
+test_that("solve_steady: returns rhapsody_error for DDE model", {
+  ir <- parse_model("X[t+1] = 1.1 * X[t]\nX[0]=10\nt0=0\ntmax=10\ndt=1")
+  result <- solve_steady(ir)
+  expect_s3_class(result, "rhapsody_error")
+  expect_match(result$message, "difference-equation")
+})
+
 test_that("solve_steady: returns rhapsody_error on invalid ODE expression", {
   ir <- parse_model("dX/dt = undefined_var * X\nX[0]=1\na=10\nt0=0\ntmax=100\ndt=0.1")
   result <- solve_steady(ir)

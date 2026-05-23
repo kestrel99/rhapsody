@@ -10,6 +10,13 @@
 #' @export
 solve_steady <- function(ir, params = NULL, ics = NULL,
                          method = "runsteady", stol = 1e-8) {
+  if (isTRUE(ir$type == "dde")) {
+    return(structure(
+      list(message = "Steady-state analysis is not available for difference-equation models."),
+      class = "rhapsody_error"
+    ))
+  }
+
   state_names <- names(ir$states)
 
   parms <- lapply(ir$parameters, `[[`, "value")
