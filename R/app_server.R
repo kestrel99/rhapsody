@@ -25,7 +25,7 @@ app_server <- function(input, output, session) {
   })
 
   param_state  <- mod_params_server("params",  ir)
-  solver_state <- mod_solver_server("solver")
+  solver_state <- mod_solver_server("solver", ir)
 
   trigger <- shiny::reactiveVal(0L)
 
@@ -56,7 +56,10 @@ app_server <- function(input, output, session) {
         solve_discrete(
           ir     = ir_val,
           params = param_state$params(),
-          ics    = param_state$ics()
+          ics    = param_state$ics(),
+          t0     = cfg$t0,
+          tmax   = cfg$tmax,
+          dt     = cfg$dt
         )
       } else {
         solve_ode(
@@ -65,7 +68,10 @@ app_server <- function(input, output, session) {
           ics    = param_state$ics(),
           method = cfg$method,
           atol   = cfg$atol,
-          rtol   = cfg$rtol
+          rtol   = cfg$rtol,
+          t0     = cfg$t0,
+          tmax   = cfg$tmax,
+          dt     = cfg$dt
         )
       }
     }, error = function(e) {

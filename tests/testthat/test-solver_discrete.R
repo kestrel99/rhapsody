@@ -26,3 +26,9 @@ test_that("solve_discrete: auxiliary columns included in output", {
   expect_true("doubled" %in% names(result))
   expect_true(all(abs(result$doubled - result$X * 2) < 1e-9))
 })
+
+test_that("solve_discrete: tmax override shortens the simulation", {
+  ir <- parse_model("X[t+1] = X[t] * 1.1\nX[0] = 10\nt0 = 0\ntmax = 100\ndt = 1")
+  result <- solve_discrete(ir, tmax = 5)
+  expect_equal(max(result$time), 5)
+})

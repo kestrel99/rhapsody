@@ -9,7 +9,8 @@
 #' @param ics Named list of initial condition overrides (optional)
 #' @return data.frame with columns: time, one per state, one per auxiliary
 #' @export
-solve_discrete <- function(ir, params = NULL, ics = NULL) {
+solve_discrete <- function(ir, params = NULL, ics = NULL,
+                           t0 = NULL, tmax = NULL, dt = NULL) {
   state_names <- names(ir$states)
 
   parms <- lapply(ir$parameters, `[[`, "value")
@@ -22,7 +23,9 @@ solve_discrete <- function(ir, params = NULL, ics = NULL) {
   param_env   <- list2env(parms, parent = safe_parent)
 
   y0 <- vapply(state_names, function(nm) {
-    if (!is.null(ics) && !is.null(ics[[nm]])) return(as.numeric(ics[[nm]]))
+    if (!is.null(ics) && !is.null(ics[[nm]])) {
+      return(as.numeric(ics[[nm]]))
+    }
     ic <- ir$states[[nm]]$init_expr %||% "0"
     tryCatch(
       eval(parse(text = ic), envir = param_env),
@@ -45,7 +48,10 @@ solve_discrete <- function(ir, params = NULL, ics = NULL) {
     list(y_new)
   }
 
-  times <- seq(ir$time$t0, ir$time$tmax, by = ir$time$dt)
+  t_start <- t0   %||% ir$time$t0
+  t_end   <- tmax %||% ir$time$tmax
+  t_step  <- dt   %||% ir$time$dt
+  times <- seq(t_start, t_end, by = t_step)
   out   <- deSolve::ode(
     y = y0, times = times, func = disc_fn,
     parms = parms, method = "iteration"

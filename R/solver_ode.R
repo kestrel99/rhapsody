@@ -11,7 +11,7 @@
 #'   and one per auxiliary variable (in declaration order)
 #' @export
 solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
-                      atol = 1e-6, rtol = 1e-6) {
+                      atol = 1e-6, rtol = 1e-6, t0 = NULL, tmax = NULL, dt = NULL) {
   state_names <- names(ir$states)
 
   # Build parameter list: IR defaults, then any caller overrides
@@ -73,7 +73,10 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
     events_arg <- list(func = event_fn, time = sort(unique(ev_times)))
   }
 
-  times <- seq(ir$time$t0, ir$time$tmax, by = ir$time$dt)
+  t_start <- t0   %||% ir$time$t0
+  t_end   <- tmax %||% ir$time$tmax
+  t_step  <- dt   %||% ir$time$dt
+  times <- seq(t_start, t_end, by = t_step)
   out   <- deSolve::ode(
     y = y0, times = times, func = ode_fn,
     parms = parms, method = method,

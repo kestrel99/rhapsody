@@ -118,3 +118,19 @@ test_that("solve_ode applies assignment event: X = 99 at t=5", {
   after  <- result$X[result$time > 5]
   expect_true(all(abs(after - 99) < 1e-6))
 })
+
+test_that("solve_ode: t0/tmax/dt arguments override IR time settings", {
+  # IR says tmax=100, dt=1; overrides say tmax=5, dt=1
+  ir <- parse_model("dX/dt = 0\nX[0] = 7\nt0 = 0\ntmax = 100\ndt = 1")
+  result <- solve_ode(ir, tmax = 5, dt = 1)
+  expect_equal(max(result$time), 5)
+  expect_equal(min(result$time), 0)
+  expect_true(all(abs(result$X - 7) < 1e-6))
+})
+
+test_that("solve_ode: t0 override shifts the start time", {
+  ir <- parse_model("dX/dt = 0\nX[0] = 3\nt0 = 0\ntmax = 10\ndt = 1")
+  result <- solve_ode(ir, t0 = 2, tmax = 5, dt = 1)
+  expect_equal(min(result$time), 2)
+  expect_equal(max(result$time), 5)
+})
