@@ -100,7 +100,10 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
     }
 
     # Event function: apply state events only for the state that is actually
-    # crossing its threshold (proximity check guards against cross-firing).
+    # crossing its threshold.
+    # lsoda calls event_fn once per root with no indication of which root triggered;
+    # the proximity check prevents applying this event when a different state
+    # crossed its threshold.
     # Time events are not handled here — deSolve ignores events$time when
     # root=TRUE, so mixed models are rejected at validation time.
     event_fn <- function(t, y, parms) {
@@ -110,7 +113,7 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
       )
       for (ev in state_ev_parsed) {
         val <- as.numeric(y[ev$state])
-        near_threshold <- abs(val - ev$threshold) <= 1e-4 * max(1, abs(ev$threshold))
+        near_threshold <- abs(val - ev$threshold) <= max(atol, rtol * abs(ev$threshold)) * 100
         if (near_threshold) {
           y[ev$var] <- eval(ev$expr, envir = env)
         }
@@ -118,17 +121,7 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
       y
     }
 
-    ev_times <- if (length(time_events) > 0L) {
-      sort(unique(vapply(time_events, `[[`, numeric(1L), "time")))
-    } else {
-      NULL
-    }
-
-    events_arg <- list(
-      func = event_fn,
-      root = TRUE,
-      time = ev_times
-    )
+    events_arg <- list(func = event_fn, root = TRUE)
 
   } else if (length(time_events) > 0L) {
     # Time events only — original approach, no rootfunc needed

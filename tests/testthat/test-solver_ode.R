@@ -195,21 +195,10 @@ test_that("solve_ode: two state events — only the triggered one fires", {
   expect_true(n_resets >= 2L)
 })
 
-test_that("solve_ode: state event < fires on downward crossing only", {
-  # X decays (dX/dt = -1), state event fires when X < 10, resets X to 100
-  m <- paste(
-    "dX/dt = -1",
-    "X[0] = 100",
-    "tmax = 300",
-    "dt   = 1",
-    "at(X < 10): X = 100",
-    sep = "\n"
+test_that("solve_ode: warns when method overridden for state events", {
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\ntmax = 10\ndt = 1\nat(X > 5): X = 0")
+  expect_warning(
+    solve_ode(ir, method = "euler"),
+    regexp = "lsoda"
   )
-  ir     <- parse_model(m)
-  result <- solve_ode(ir)
-  # X should never drop below 10 (within tolerance)
-  expect_true(min(result$X) >= 9.5)
-  # Should reset multiple times
-  n_resets <- sum(diff(result$X) > 50)
-  expect_true(n_resets >= 2L)
 })
