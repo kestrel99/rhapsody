@@ -57,5 +57,14 @@ validate_model <- function(ir) {
     }
   }
 
+  # Time events and state events cannot be combined in the current implementation
+  # (deSolve ignores scheduled times when root-finding is active)
+  has_time_ev  <- any(vapply(ir$events, function(ev) isTRUE(ev$type == "time"),  logical(1L)))
+  has_state_ev <- any(vapply(ir$events, function(ev) isTRUE(ev$type == "state"), logical(1L)))
+  if (has_time_ev && has_state_ev) {
+    errors <- c(errors,
+      "Combining time-based and state-based events in the same model is not currently supported.")
+  }
+
   list(errors = errors, warnings = warnings)
 }

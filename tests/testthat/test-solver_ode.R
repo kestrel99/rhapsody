@@ -171,3 +171,45 @@ test_that("solve_ode: state event with < comparator fires when state falls below
   n_resets <- sum(diff(result$X) > 70)
   expect_true(n_resets >= 2L)
 })
+
+test_that("solve_ode: two state events — only the triggered one fires", {
+  # X grows (dX/dt = 1), Y is constant (dY/dt = 0)
+  # at(X > 50): X = 0 should fire; at(Y < 10): Y = 99 should NOT fire (Y stays at 50)
+  m <- paste(
+    "dX/dt = 1",
+    "dY/dt = 0",
+    "X[0] = 0",
+    "Y[0] = 50",
+    "tmax = 200",
+    "dt   = 1",
+    "at(X > 50): X = 0",
+    "at(Y < 10): Y = 99",
+    sep = "\n"
+  )
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  # Y should stay at 50 throughout — the Y event should never fire
+  expect_true(all(abs(result$Y - 50) < 1e-6))
+  # X should reset multiple times
+  n_resets <- sum(diff(result$X) < -40)
+  expect_true(n_resets >= 2L)
+})
+
+test_that("solve_ode: state event < fires on downward crossing only", {
+  # X decays (dX/dt = -1), state event fires when X < 10, resets X to 100
+  m <- paste(
+    "dX/dt = -1",
+    "X[0] = 100",
+    "tmax = 300",
+    "dt   = 1",
+    "at(X < 10): X = 100",
+    sep = "\n"
+  )
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  # X should never drop below 10 (within tolerance)
+  expect_true(min(result$X) >= 9.5)
+  # Should reset multiple times
+  n_resets <- sum(diff(result$X) > 50)
+  expect_true(n_resets >= 2L)
+})

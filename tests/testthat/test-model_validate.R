@@ -79,3 +79,10 @@ test_that("validate_model: valid state event produces no errors", {
   result <- validate_model(ir)
   expect_length(result$errors, 0L)
 })
+
+test_that("validate_model: combining time and state events is an error", {
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\nat(t == 10): X = 0\nat(X > 80): X = 0")
+  result <- validate_model(ir)
+  expect_true(length(result$errors) > 0L)
+  expect_true(any(grepl("not currently supported", result$errors)))
+})

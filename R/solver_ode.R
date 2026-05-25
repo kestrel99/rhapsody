@@ -86,28 +86,34 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
   if (length(state_events) > 0L) {
     # State events require root-finding; use lsoda which supports rootfunc
     # and continues integration after each event (lsodar stops at first root)
+    if (!identical(method, "lsoda")) {
+      warning("State-based events require method='lsoda'; ignoring caller-supplied method='", method, "'.")
+    }
     method <- "lsoda"
 
     rootfunc <- function(t, y, parms) {
       vapply(state_ev_parsed, function(ev) {
-        as.numeric(y[ev$state]) - ev$threshold
+        val <- as.numeric(y[ev$state])
+        if (ev$comparator %in% c(">", ">=")) val - ev$threshold
+        else                                   ev$threshold - val
       }, numeric(1L))
     }
 
-    # Unified event function: apply time events at their scheduled times,
-    # apply state events unconditionally (the rootfunc already gated the call;
-    # re-checking comparator here would fail at the exact root where
-    # y[state] == threshold, which is neither strictly > nor < threshold)
+    # Event function: apply state events only for the state that is actually
+    # crossing its threshold (proximity check guards against cross-firing).
+    # Time events are not handled here — deSolve ignores events$time when
+    # root=TRUE, so mixed models are rejected at validation time.
     event_fn <- function(t, y, parms) {
       env <- list2env(
         c(as.list(parms), as.list(y), list(t = t)),
         parent = safe_parent
       )
-      for (ev in time_ev_parsed) {
-        y[ev$var] <- eval(ev$expr, envir = env)
-      }
       for (ev in state_ev_parsed) {
-        y[ev$var] <- eval(ev$expr, envir = env)
+        val <- as.numeric(y[ev$state])
+        near_threshold <- abs(val - ev$threshold) <= 1e-4 * max(1, abs(ev$threshold))
+        if (near_threshold) {
+          y[ev$var] <- eval(ev$expr, envir = env)
+        }
       }
       y
     }
