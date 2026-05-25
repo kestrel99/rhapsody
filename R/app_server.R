@@ -105,7 +105,10 @@ app_server <- function(input, output, session) {
   mod_report_server("report", ir, param_state, solve_result)
 
   # ── Import ────────────────────────────────────────────────────
+  import_warnings <- shiny::reactiveVal(NULL)
+
   shiny::observeEvent(input$import_btn, {
+    import_warnings(NULL)
     importable <- get_importable_filters()
     exts <- unique(unlist(lapply(importable, `[[`, "ext")))
     accept_str <- paste(exts, collapse = ",")
@@ -149,8 +152,6 @@ app_server <- function(input, output, session) {
     shiny::removeModal()
   })
 
-  import_warnings <- shiny::reactiveVal(NULL)
-
   output$import_warnings_ui <- shiny::renderUI({
     w <- import_warnings()
     if (is.null(w) || length(w) == 0L) return(NULL)
@@ -168,8 +169,10 @@ app_server <- function(input, output, session) {
       vapply(exportable, `[[`, character(1L), "name"),
       vapply(exportable, `[[`, character(1L), "label")
     )
-    has_result <- !is.null(shiny::isolate(solve_result())) &&
-                  !inherits(shiny::isolate(solve_result()), "rhapsody_error")
+    has_result <- local({
+      r <- shiny::isolate(solve_result())
+      !is.null(r) && !inherits(r, "rhapsody_error")
+    })
     shiny::showModal(shiny::modalDialog(
       title = "Export",
       shiny::tags$strong("Export Model"),
@@ -193,13 +196,13 @@ app_server <- function(input, output, session) {
   output$export_model_dl <- shiny::downloadHandler(
     filename = function() {
       fmt  <- input$export_format
-      filt <- .filter_env[[fmt]]
+      filt <- filter_by_name(fmt)
       if (is.null(filt)) return("model.dat")
       paste0("model", filt$ext[[1L]])
     },
     content = function(file) {
       fmt  <- input$export_format
-      filt <- .filter_env[[fmt]]
+      filt <- filter_by_name(fmt)
       shiny::req(!is.null(filt), !is.null(filt$export))
       filt$export(ir(), file)
     }

@@ -7,10 +7,10 @@ desolve_export <- function(ir, path) {
 
   # Evaluate init expressions with parameter values available
   param_vals <- vapply(ir$parameters, `[[`, numeric(1L), "value")
-  safe_env   <- list2env(as.list(param_vals), parent = baseenv())
+  safe_parent <- list2env(as.list(param_vals), parent = baseenv())
   ic_vals    <- vapply(ir$states, function(s) {
     tryCatch(
-      as.numeric(eval(parse(text = s$init_expr), envir = safe_env)),
+      as.numeric(eval(parse(text = s$init_expr), envir = safe_parent)),
       error = function(e) 0
     )
   }, numeric(1L))
@@ -25,7 +25,7 @@ desolve_export <- function(ir, path) {
 
   param_lines  <- fmt_named_vec(param_names, param_vals)
   ic_lines     <- fmt_named_vec(state_names, ic_vals)
-  d_names      <- paste0("d", state_names)
+  d_names      <- if (length(state_names) == 0L) character(0L) else paste0("d", state_names)
   deriv_lines  <- paste0("    ", d_names, " <- ",
                          vapply(ir$states, `[[`, character(1L), "ode_expr"))
   return_line  <- paste0("    list(c(", paste(d_names, collapse = ", "), "))")

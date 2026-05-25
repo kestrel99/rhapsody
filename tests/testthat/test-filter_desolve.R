@@ -38,3 +38,33 @@ test_that("desolve_export script contains deSolve::ode() call with correct tmax"
   expect_true(grepl("77", content, fixed = TRUE))
   expect_true(grepl("deSolve::ode", content, fixed = TRUE))
 })
+
+test_that("desolve_export handles a two-state model correctly", {
+  ir  <- parse_model(paste(
+    "dX/dt = r * X * (1 - X / K)",
+    "dY/dt = a * X * Y - b * Y",
+    "X[0] = 10", "Y[0] = 2",
+    "r = 1.2", "K = 100", "a = 0.01", "b = 0.5",
+    "t0 = 0", "tmax = 50", "dt = 0.1",
+    sep = "\n"
+  ))
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  expect_no_error(parse(tmp))
+  content <- paste(readLines(tmp), collapse = "\n")
+  expect_true(grepl("dX", content, fixed = TRUE))
+  expect_true(grepl("dY", content, fixed = TRUE))
+  expect_true(grepl("list(c(dX, dY))", content, fixed = TRUE))
+})
+
+test_that("desolve_export handles a model with no parameters", {
+  # Model with numeric literal IC — no parameters at all
+  ir  <- parse_model("dX/dt = -0.5 * X\nX[0] = 10\nt0 = 0\ntmax = 5\ndt = 0.1")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  expect_no_error(parse(tmp))
+  content <- paste(readLines(tmp), collapse = "\n")
+  expect_true(grepl("library(deSolve)", content, fixed = TRUE))
+})

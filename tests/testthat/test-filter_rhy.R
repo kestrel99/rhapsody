@@ -7,8 +7,8 @@ test_that("rhy_import extracts IR from a full session .rhy file", {
     solver = list(method = "lsoda", t0 = 0, tmax = 10, dt = 0.1, atol = 1e-6, rtol = 1e-6)
   )
   tmp <- tempfile(fileext = ".rhy")
-  writeLines(json_str, tmp)
   on.exit(unlink(tmp))
+  writeLines(json_str, tmp)
   ir <- rhy_import(tmp)
   expect_false(inherits(ir, "rhapsody_error"))
   expect_true("X" %in% names(ir$states))
@@ -25,8 +25,8 @@ test_that("rhy_import returns rhapsody_error for malformed JSON", {
 
 test_that("rhy_import returns rhapsody_error when model field is missing", {
   tmp <- tempfile(fileext = ".rhy")
-  writeLines('{"rhapsody_version": "0.1.0"}', tmp)
   on.exit(unlink(tmp))
+  writeLines('{"rhapsody_version": "0.1.0"}', tmp)
   result <- rhy_import(tmp)
   expect_s3_class(result, "rhapsody_error")
 })
@@ -41,6 +41,17 @@ test_that("rhy_export writes a JSON file with model and rhapsody_version fields"
   expect_true("model" %in% names(raw))
   expect_true("rhapsody_version" %in% names(raw))
   expect_true(nzchar(raw$model))
+})
+
+test_that("rhy_import works with a model-only .rhy file (not a full session)", {
+  model_src <- "dX/dt = -X\nX[0] = 5\nt0 = 0\ntmax = 10\ndt = 0.1"
+  data <- list(rhapsody_version = "0.1.0", model = model_src)
+  tmp <- tempfile(fileext = ".rhy")
+  on.exit(unlink(tmp))
+  writeLines(jsonlite::toJSON(data, auto_unbox = TRUE), tmp)
+  ir <- rhy_import(tmp)
+  expect_false(inherits(ir, "rhapsody_error"))
+  expect_true("X" %in% names(ir$states))
 })
 
 test_that("rhy_export -> rhy_import round-trip preserves states and parameters", {

@@ -29,3 +29,8 @@ get_exportable_filters <- function() {
 filter_for_ext <- function(ext) {
   Filter(function(f) ext %in% f$ext, as.list(.filter_env))
 }
+
+#' @noRd
+filter_by_name <- function(name) {
+  .filter_env[[name]]
+}

@@ -46,3 +46,13 @@ test_that("filter_for_ext matches one of multiple extensions", {
   expect_equal(length(filter_for_ext(".t1mb99")), 1L)
   expect_equal(filter_for_ext(".t1ma99")[[1L]]$name, "t1multi")
 })
+
+test_that("filter_for_ext returns multiple filters when two filters share an extension", {
+  register_filter("t1shared_a", "Shared A", ".t1shared99", import = function(p) list())
+  register_filter("t1shared_b", "Shared B", ".t1shared99", import = function(p) list())
+  result <- filter_for_ext(".t1shared99")
+  expect_equal(length(result), 2L)
+  names_found <- vapply(result, `[[`, character(1L), "name")
+  expect_true("t1shared_a" %in% names_found)
+  expect_true("t1shared_b" %in% names_found)
+})
