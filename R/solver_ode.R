@@ -7,11 +7,15 @@
 #' @param method deSolve method string; default "lsoda"
 #' @param atol Absolute tolerance passed to deSolve; default 1e-6
 #' @param rtol Relative tolerance passed to deSolve; default 1e-6
+#' @param t0 Override simulation start time (NULL = use IR value)
+#' @param tmax Override simulation end time (NULL = use IR value)
+#' @param dt Override output time step (NULL = use IR value)
 #' @return data.frame with columns: time, one per state variable,
 #'   and one per auxiliary variable (in declaration order)
 #' @export
 solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
-                      atol = 1e-6, rtol = 1e-6, t0 = NULL, tmax = NULL, dt = NULL) {
+                      atol = 1e-6, rtol = 1e-6, t0 = NULL, tmax = NULL,
+                      dt = NULL) {
   state_names <- names(ir$states)
 
   # Build parameter list: IR defaults, then any caller overrides
@@ -34,10 +38,12 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
     ic <- ir$states[[nm]]$init_expr %||% "0"
     tryCatch(
       eval(parse(text = ic), envir = param_env),
-      error = function(e) stop(
-        "Error evaluating initial condition for '", nm, "': ",
-        conditionMessage(e)
-      )
+      error = function(e) {
+        stop(
+          "Error evaluating initial condition for '", nm, "': ",
+          conditionMessage(e)
+        )
+      }
     )
   }, numeric(1L))
   names(y0) <- state_names
@@ -54,34 +60,95 @@ solve_ode <- function(ir, params = NULL, ics = NULL, method = "lsoda",
     list(dydt)
   }
 
-  # Build deSolve events argument from ir$events (time-based only in Phase 3)
-  events_arg <- NULL
-  if (length(ir$events) > 0L) {
-    ev_times  <- vapply(ir$events, `[[`, numeric(1L), "time")
-    ev_parsed <- lapply(ir$events, function(ev) list(
+  # Separate time-based and state-based events
+  time_events  <- Filter(function(ev) isTRUE(ev$type == "time"),  ir$events)
+  state_events <- Filter(function(ev) isTRUE(ev$type == "state"), ir$events)
+
+  # Pre-parse event expressions
+  time_ev_parsed <- lapply(time_events, function(ev) {
+    list(
       var  = ev$var,
       expr = parse(text = ev$expr)
-    ))
+    )
+  })
+  state_ev_parsed <- lapply(state_events, function(ev) {
+    list(
+      state      = ev$state,
+      comparator = ev$comparator,
+      threshold  = ev$threshold,
+      var        = ev$var,
+      expr       = parse(text = ev$expr)
+    )
+  })
+
+  events_arg <- NULL
+
+  if (length(state_events) > 0L) {
+    # State events require root-finding; use lsoda which supports rootfunc
+    # and continues integration after each event (lsodar stops at first root)
+    method <- "lsoda"
+
+    rootfunc <- function(t, y, parms) {
+      vapply(state_ev_parsed, function(ev) {
+        as.numeric(y[ev$state]) - ev$threshold
+      }, numeric(1L))
+    }
+
+    # Unified event function: apply time events at their scheduled times,
+    # apply state events unconditionally (the rootfunc already gated the call;
+    # re-checking comparator here would fail at the exact root where
+    # y[state] == threshold, which is neither strictly > nor < threshold)
     event_fn <- function(t, y, parms) {
       env <- list2env(
         c(as.list(parms), as.list(y), list(t = t)),
         parent = safe_parent
       )
-      for (ev in ev_parsed) y[ev$var] <- eval(ev$expr, envir = env)
+      for (ev in time_ev_parsed) {
+        y[ev$var] <- eval(ev$expr, envir = env)
+      }
+      for (ev in state_ev_parsed) {
+        y[ev$var] <- eval(ev$expr, envir = env)
+      }
       y
     }
-    events_arg <- list(func = event_fn, time = sort(unique(ev_times)))
+
+    ev_times <- if (length(time_events) > 0L) {
+      sort(unique(vapply(time_events, `[[`, numeric(1L), "time")))
+    } else {
+      NULL
+    }
+
+    events_arg <- list(
+      func = event_fn,
+      root = TRUE,
+      time = ev_times
+    )
+
+  } else if (length(time_events) > 0L) {
+    # Time events only — original approach, no rootfunc needed
+    ev_times <- sort(unique(vapply(time_events, `[[`, numeric(1L), "time")))
+    event_fn <- function(t, y, parms) {
+      env <- list2env(
+        c(as.list(parms), as.list(y), list(t = t)),
+        parent = safe_parent
+      )
+      for (ev in time_ev_parsed) y[ev$var] <- eval(ev$expr, envir = env)
+      y
+    }
+    events_arg <- list(func = event_fn, time = ev_times)
   }
 
   t_start <- t0   %||% ir$time$t0
   t_end   <- tmax %||% ir$time$tmax
   t_step  <- dt   %||% ir$time$dt
   times <- seq(t_start, t_end, by = t_step)
+
   out   <- deSolve::ode(
     y = y0, times = times, func = ode_fn,
     parms = parms, method = method,
     atol = atol, rtol = rtol,
-    events = events_arg
+    events = events_arg,
+    rootfunc = if (length(state_events) > 0L) rootfunc else NULL
   )
   out_df <- as.data.frame(out)
 

@@ -144,3 +144,61 @@ test_that("parse_model: multiple events are all captured in order", {
   expect_equal(ir$events[[2]]$time, 80)
   expect_equal(ir$events[[2]]$expr, "X * 2")
 })
+
+test_that("parse_model: state-based event with > is parsed into ir$events", {
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\nat(X > 80): X = 0")
+  expect_length(ir$events, 1L)
+  ev <- ir$events[[1]]
+  expect_equal(ev$type,       "state")
+  expect_equal(ev$state,      "X")
+  expect_equal(ev$comparator, ">")
+  expect_equal(ev$threshold,  80)
+  expect_equal(ev$var,        "X")
+  expect_equal(ev$expr,       "0")
+})
+
+test_that("parse_model: state-based event with < is parsed", {
+  ir <- parse_model("dX/dt = -1\nX[0] = 100\nat(X < 10): X = 100")
+  ev <- ir$events[[1]]
+  expect_equal(ev$type,       "state")
+  expect_equal(ev$comparator, "<")
+  expect_equal(ev$threshold,  10)
+})
+
+test_that("parse_model: state event with >= comparator is parsed", {
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\nat(X >= 50): Y = 0")
+  ev <- ir$events[[1]]
+  expect_equal(ev$comparator, ">=")
+  expect_equal(ev$var, "Y")
+})
+
+test_that("parse_model: multiple state events all captured", {
+  src <- paste(
+    "dX/dt = 1",
+    "dY/dt = -1",
+    "X[0] = 0",
+    "Y[0] = 100",
+    "at(X > 50): X = 0",
+    "at(Y < 20): Y = 100",
+    sep = "\n"
+  )
+  ir <- parse_model(src)
+  expect_length(ir$events, 2L)
+  types <- vapply(ir$events, `[[`, character(1L), "type")
+  expect_true(all(types == "state"))
+})
+
+test_that("parse_model: time event and state event coexist", {
+  src <- paste(
+    "dX/dt = 1",
+    "X[0] = 0",
+    "at(t == 10): X = 0",
+    "at(X > 80): X = 0",
+    sep = "\n"
+  )
+  ir <- parse_model(src)
+  expect_length(ir$events, 2L)
+  ev_types <- vapply(ir$events, `[[`, character(1L), "type")
+  expect_true("time" %in% ev_types)
+  expect_true("state" %in% ev_types)
+})

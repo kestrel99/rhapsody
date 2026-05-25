@@ -71,6 +71,28 @@ parse_model <- function(source) {
       next
     }
 
+    # 2d. State-based event: at(STATE CMP VALUE): var = expr
+    m <- regmatches(line, regexec(
+      "^at\\s*\\(\\s*(\\w+)\\s*(>=|<=|>|<)\\s*([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)\\s*\\)\\s*:\\s*(\\w+)\\s*=\\s*(.+)$",
+      line, perl = TRUE
+    ))[[1]]
+    if (length(m) == 6L) {
+      state_nm  <- m[2L]
+      cmp       <- m[3L]
+      thresh    <- as.numeric(m[4L])
+      var_nm    <- m[5L]
+      ev_expr   <- trimws(sub("#.*$", "", m[6L], perl = TRUE))
+      ir$events[[length(ir$events) + 1L]] <- list(
+        type       = "state",
+        state      = state_nm,
+        comparator = cmp,
+        threshold  = thresh,
+        var        = var_nm,
+        expr       = ev_expr
+      )
+      next
+    }
+
     # 3. Initial condition: X[0] = expr
     m <- regmatches(line, regexec("^(\\w+)\\[0\\]\\s*=\\s*(.+)$", line, perl = TRUE))[[1]]
     if (length(m) == 3L) {

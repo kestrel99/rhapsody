@@ -134,3 +134,40 @@ test_that("solve_ode: t0 override shifts the start time", {
   expect_equal(min(result$time), 2)
   expect_equal(max(result$time), 5)
 })
+
+test_that("solve_ode applies state-based event: reset X to 0 when X > 80", {
+  # dX/dt = 1 — linear growth; state event resets X to 0 when X crosses 80
+  # With tmax=250 and dt=1 we expect several resets
+  m <- paste(
+    "dX/dt = 1",
+    "X[0] = 0",
+    "tmax = 250",
+    "dt   = 1",
+    "at(X > 80): X = 0",
+    sep = "\n"
+  )
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  # X should never exceed 80 (within solver tolerance)
+  expect_true(max(result$X) <= 80 + 1e-3)
+  # and should have been reset at least twice (hit 80 at t≈80, t≈160, t≈240)
+  n_resets <- sum(diff(result$X) < -70)
+  expect_true(n_resets >= 2L)
+})
+
+test_that("solve_ode: state event with < comparator fires when state falls below threshold", {
+  # dX/dt = -1 — linear decay; fires X = 100 when X < 10
+  m <- paste(
+    "dX/dt = -1",
+    "X[0] = 100",
+    "tmax = 350",
+    "dt   = 1",
+    "at(X < 10): X = 100",
+    sep = "\n"
+  )
+  ir     <- parse_model(m)
+  result <- solve_ode(ir)
+  expect_true(min(result$X) >= 9.9)
+  n_resets <- sum(diff(result$X) > 70)
+  expect_true(n_resets >= 2L)
+})

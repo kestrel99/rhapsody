@@ -57,3 +57,25 @@ test_that("validate_model: mixed type is an error", {
   errs <- validate_model(ir)
   expect_true(any(grepl("Mixed", errs$errors, ignore.case = TRUE)))
 })
+
+test_that("validate_model: state event targeting a parameter is an error", {
+  # 'r' is a parameter, not a state — assigning to it in a state event is invalid
+  ir <- parse_model("dX/dt = r * X\nX[0] = 1\nr = 1.0\nat(X > 80): r = 0")
+  result <- validate_model(ir)
+  expect_true(length(result$errors) > 0L)
+  expect_true(any(grepl("r", result$errors)))
+})
+
+test_that("validate_model: state event with unknown trigger state is an error", {
+  # 'Z' is not a state variable
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\nat(Z > 50): X = 0")
+  result <- validate_model(ir)
+  expect_true(length(result$errors) > 0L)
+  expect_true(any(grepl("Z", result$errors)))
+})
+
+test_that("validate_model: valid state event produces no errors", {
+  ir <- parse_model("dX/dt = 1\nX[0] = 0\nat(X > 80): X = 0")
+  result <- validate_model(ir)
+  expect_length(result$errors, 0L)
+})

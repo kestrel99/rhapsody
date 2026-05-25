@@ -40,5 +40,22 @@ validate_model <- function(ir) {
     errors <- c(errors, "tmax must be greater than t0.")
   }
 
+  # State-based events: trigger state and target var must be state variables
+  state_names_set <- names(ir$states)
+  for (ev in ir$events) {
+    if (!isTRUE(ev$type == "state")) next
+    if (!ev$state %in% state_names_set) {
+      errors <- c(errors, sprintf(
+        "State event trigger '%s' is not a state variable.", ev$state
+      ))
+    }
+    if (!ev$var %in% state_names_set) {
+      errors <- c(errors, sprintf(
+        "State event target '%s' must be a state variable (not a parameter).",
+        ev$var
+      ))
+    }
+  }
+
   list(errors = errors, warnings = warnings)
 }
