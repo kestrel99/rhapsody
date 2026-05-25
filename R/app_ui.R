@@ -7,9 +7,23 @@ app_ui <- function(request) {
 
       # ── Toolbar ──────────────────────────────────────────────
       shiny::div(
-        class = "d-flex align-items-center gap-3 p-2 bg-light border-bottom",
+        class = "d-flex align-items-center gap-2 p-2 bg-light border-bottom",
         shiny::tags$strong("rhapsody", class = "fs-5 me-2"),
-        shiny::actionButton("run", "Run", class = "btn btn-primary btn-sm")
+        shiny::actionButton("run",         "Run",  class = "btn btn-primary btn-sm"),
+        shiny::actionButton("new_session", "New",  class = "btn btn-outline-secondary btn-sm"),
+        shiny::downloadButton("session_save", "Save",
+                              class = "btn btn-outline-secondary btn-sm"),
+        shiny::div(
+          class = "btn btn-outline-secondary btn-sm p-0",
+          style = "overflow: hidden; line-height: 1;",
+          shiny::fileInput(
+            "session_load", label = NULL,
+            accept      = ".rhy",
+            buttonLabel = "Load",
+            placeholder = "",
+            width       = "100px"
+          )
+        )
       ),
 
       # ── 4-pane workspace ─────────────────────────────────────

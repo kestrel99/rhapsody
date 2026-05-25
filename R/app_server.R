@@ -101,4 +101,86 @@ app_server <- function(input, output, session) {
 
   mod_fft_server("fft", solve_result)
   mod_scan_server("scan", ir, param_state)
+
+  # ── Session: New ─────────────────────────────────────────────
+  shiny::observeEvent(input$new_session, {
+    shinyAce::updateAceEditor(session, "editor-code", value = paste(
+      "dX/dt = r * X * (1 - X / K)",
+      "dY/dt = a * X * Y - b * Y",
+      "X[0] = 10",
+      "Y[0] = 2",
+      "r = 1.2   # [0.1, 3]",
+      "K = 100   # [10, 500]",
+      "a = 0.01  # [0, 0.1]",
+      "b = 0.5   # [0.01, 2]",
+      "t0   = 0",
+      "tmax = 100",
+      "dt   = 0.1",
+      sep = "\n"
+    ))
+  })
+
+  # ── Session: Save ─────────────────────────────────────────────
+  output$session_save <- shiny::downloadHandler(
+    filename = function() {
+      paste0("rhapsody-session-", format(Sys.time(), "%Y%m%d-%H%M%S"), ".rhy")
+    },
+    content = function(file) {
+      json_str <- session_to_json(
+        model  = model_code(),
+        params = param_state$params(),
+        ics    = param_state$ics(),
+        solver = solver_state()
+      )
+      writeLines(json_str, file)
+    }
+  )
+
+  # ── Session: Load ─────────────────────────────────────────────
+  pending_session <- shiny::reactiveVal(NULL)
+
+  shiny::observeEvent(input$session_load, {
+    info <- input$session_load
+    shiny::req(!is.null(info))
+    loaded <- session_from_json(info$datapath)
+    if (inherits(loaded, "rhapsody_error")) {
+      shiny::showNotification(
+        paste("Failed to load session:", loaded$message),
+        type = "error", duration = 8
+      )
+      return()
+    }
+    pending_session(loaded)
+    shinyAce::updateAceEditor(session, "editor-code", value = loaded$model)
+  })
+
+  shiny::observeEvent(ir(), {
+    pd <- pending_session()
+    if (is.null(pd)) return()
+    pending_session(NULL)
+
+    for (nm in names(pd$params)) {
+      shiny::updateNumericInput(
+        session = session,
+        inputId = paste0("params-", nm),
+        value   = as.numeric(pd$params[[nm]])
+      )
+    }
+    for (nm in names(pd$ics)) {
+      shiny::updateNumericInput(
+        session = session,
+        inputId = paste0("params-ic_", nm),
+        value   = as.numeric(pd$ics[[nm]])
+      )
+    }
+    slv <- pd$solver
+    if (!is.null(slv)) {
+      if (!is.null(slv$method)) shiny::updateSelectInput( session, "solver-method", selected = slv$method)
+      if (!is.null(slv$atol))   shiny::updateNumericInput(session, "solver-atol",   value    = slv$atol)
+      if (!is.null(slv$rtol))   shiny::updateNumericInput(session, "solver-rtol",   value    = slv$rtol)
+      if (!is.null(slv$t0))     shiny::updateNumericInput(session, "solver-t0",     value    = slv$t0)
+      if (!is.null(slv$tmax))   shiny::updateNumericInput(session, "solver-tmax",   value    = slv$tmax)
+      if (!is.null(slv$dt))     shiny::updateNumericInput(session, "solver-dt",     value    = slv$dt)
+    }
+  }, ignoreNULL = TRUE)
 }
