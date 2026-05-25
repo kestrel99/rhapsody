@@ -10,7 +10,10 @@ solve_ode(
   ics = NULL,
   method = "lsoda",
   atol = 1e-06,
-  rtol = 1e-06
+  rtol = 1e-06,
+  t0 = NULL,
+  tmax = NULL,
+  dt = NULL
 )
 }
 \arguments{
@@ -26,6 +29,12 @@ Values must be numeric scalars; names must match state names in \code{ir}.}
 \item{atol}{Absolute tolerance passed to deSolve; default 1e-6}
 
 \item{rtol}{Relative tolerance passed to deSolve; default 1e-6}
+
+\item{t0}{Override simulation start time (NULL = use IR value)}
+
+\item{tmax}{Override simulation end time (NULL = use IR value)}
+
+\item{dt}{Override output time step (NULL = use IR value)}
 }
 \value{
 data.frame with columns: time, one per state variable,

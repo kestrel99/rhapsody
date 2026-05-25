@@ -4,13 +4,15 @@
 \alias{mod_solver_server}
 \title{Solver settings module — server}
 \usage{
-mod_solver_server(id)
+mod_solver_server(id, ir)
 }
 \arguments{
 \item{id}{Module namespace id}
+
+\item{ir}{Reactive returning the parsed model IR (from parse_model())}
 }
 \value{
-Reactive returning list(method, atol, rtol)
+Reactive returning list(method, atol, rtol, t0, tmax, dt)
 }
 \description{
 Solver settings module — server

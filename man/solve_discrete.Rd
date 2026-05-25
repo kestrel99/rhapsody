@@ -4,7 +4,14 @@
 \alias{solve_discrete}
 \title{Run a difference-equation simulation from a parsed model IR}
 \usage{
-solve_discrete(ir, params = NULL, ics = NULL)
+solve_discrete(
+  ir,
+  params = NULL,
+  ics = NULL,
+  t0 = NULL,
+  tmax = NULL,
+  dt = NULL
+)
 }
 \arguments{
 \item{ir}{Canonical IR list from parse_model() with type == "dde"}

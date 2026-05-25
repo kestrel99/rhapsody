@@ -1,11 +1,6 @@
-#' Serialize current session state to a JSON string
-#'
-#' @param model Character string — raw model source
-#' @param params Named list of parameter values
-#' @param ics Named list of initial condition values
-#' @param solver Named list with fields: method, atol, rtol, t0, tmax, dt
-#' @return JSON character string (pretty-printed)
-#' @export
+# Serialize current session state to a JSON string.
+# Returns a JSON character string (pretty-printed).
+#' @noRd
 session_to_json <- function(model, params, ics, solver) {
   data <- list(
     rhapsody_version = as.character(utils::packageVersion("rhapsody")),
@@ -17,12 +12,10 @@ session_to_json <- function(model, params, ics, solver) {
   jsonlite::toJSON(data, auto_unbox = TRUE, pretty = TRUE)
 }
 
-#' Load a session from a .rhy JSON file
-#'
-#' @param path Path to the .rhy file
-#' @return Named list with fields: rhapsody_version, model, params, ics, solver,
-#'   or a rhapsody_error if the file is invalid
-#' @export
+# Load a session from a .rhy JSON file.
+# Returns a named list with fields: rhapsody_version, model, params, ics,
+# solver, or a rhapsody_error if the file is invalid.
+#' @noRd
 session_from_json <- function(path) {
   tryCatch({
     raw <- jsonlite::fromJSON(path, simplifyVector = FALSE)

@@ -10,5 +10,5 @@ mod_solver_ui(id)
 \item{id}{Module namespace id}
 }
 \description{
-Renders an integration method selector plus atol and rtol inputs.
+Renders integration method, tolerance, and time-range (t0/tmax/dt) controls.
 }

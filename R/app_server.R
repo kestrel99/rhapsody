@@ -104,20 +104,7 @@ app_server <- function(input, output, session) {
 
   # ── Session: New ─────────────────────────────────────────────
   shiny::observeEvent(input$new_session, {
-    shinyAce::updateAceEditor(session, "editor-code", value = paste(
-      "dX/dt = r * X * (1 - X / K)",
-      "dY/dt = a * X * Y - b * Y",
-      "X[0] = 10",
-      "Y[0] = 2",
-      "r = 1.2   # [0.1, 3]",
-      "K = 100   # [10, 500]",
-      "a = 0.01  # [0, 0.1]",
-      "b = 0.5   # [0.01, 2]",
-      "t0   = 0",
-      "tmax = 100",
-      "dt   = 0.1",
-      sep = "\n"
-    ))
+    shinyAce::updateAceEditor(session, "editor-code", value = .default_model_code)
   })
 
   # ── Session: Save ─────────────────────────────────────────────
@@ -126,8 +113,15 @@ app_server <- function(input, output, session) {
       paste0("rhapsody-session-", format(Sys.time(), "%Y%m%d-%H%M%S"), ".rhy")
     },
     content = function(file) {
+      code <- model_code()
+      if (is.null(code) || !nzchar(trimws(code))) {
+        stop("No model to save.")
+      }
+      if (!is.null(parse_error())) {
+        stop("Cannot save a session with a model parse error.")
+      }
       json_str <- session_to_json(
-        model  = model_code(),
+        model  = code,
         params = param_state$params(),
         ics    = param_state$ics(),
         solver = solver_state()
@@ -154,6 +148,10 @@ app_server <- function(input, output, session) {
     shinyAce::updateAceEditor(session, "editor-code", value = loaded$model)
   })
 
+  # NOTE: Shiny executes same-priority reactive observers in registration order.
+  # mod_solver_server's ir() observer (registered at line 28) fires first and
+  # resets t0/tmax/dt to model defaults. This observer fires second and
+  # overwrites with the session's saved solver values. The ordering is intentional.
   shiny::observeEvent(ir(), {
     pd <- pending_session()
     if (is.null(pd)) return()
@@ -182,5 +180,20 @@ app_server <- function(input, output, session) {
       if (!is.null(slv$tmax))   shiny::updateNumericInput(session, "solver-tmax",   value    = slv$tmax)
       if (!is.null(slv$dt))     shiny::updateNumericInput(session, "solver-dt",     value    = slv$dt)
     }
-  }, ignoreNULL = TRUE)
+
+    # Notify about any session values that don't match the current model
+    current_params <- names(ir()$parameters)
+    current_states <- names(ir()$states)
+    missing_params <- setdiff(names(pd$params), current_params)
+    missing_ics    <- setdiff(names(pd$ics),    current_states)
+    dropped <- c(missing_params, missing_ics)
+    if (length(dropped) > 0L) {
+      shiny::showNotification(
+        paste0("Session loaded. The following saved values were not applied",
+               " (not in current model): ",
+               paste(dropped, collapse = ", "), "."),
+        type = "warning", duration = 10
+      )
+    }
+  }, ignoreInit = TRUE)
 }
