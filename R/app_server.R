@@ -102,6 +102,120 @@ app_server <- function(input, output, session) {
   mod_fft_server("fft", solve_result)
   mod_scan_server("scan", ir, param_state)
 
+  mod_report_server("report", ir, param_state, solve_result)
+
+  # ── Import ────────────────────────────────────────────────────
+  shiny::observeEvent(input$import_btn, {
+    importable <- get_importable_filters()
+    exts <- unique(unlist(lapply(importable, `[[`, "ext")))
+    accept_str <- paste(exts, collapse = ",")
+    shiny::showModal(shiny::modalDialog(
+      title  = "Import Model",
+      shiny::fileInput(
+        "import_file", label = NULL,
+        accept      = accept_str,
+        buttonLabel = "Choose file…",
+        placeholder = "No file selected"
+      ),
+      shiny::uiOutput("import_warnings_ui"),
+      footer = shiny::modalButton("Cancel"),
+      size   = "s"
+    ))
+  })
+
+  shiny::observeEvent(input$import_file, {
+    info <- input$import_file
+    shiny::req(!is.null(info))
+    ext <- paste0(".", tolower(tools::file_ext(info$name)))
+    candidates <- filter_for_ext(ext)
+    if (length(candidates) == 0L) {
+      shiny::showNotification(
+        paste0("No import filter found for '", ext, "' files."),
+        type = "error", duration = 6
+      )
+      return()
+    }
+    filt   <- candidates[[1L]]
+    result <- filt$import(info$datapath)
+    if (inherits(result, "rhapsody_error")) {
+      shiny::showNotification(
+        paste("Import failed:", result$message),
+        type = "error", duration = 8
+      )
+      return()
+    }
+    import_warnings(attr(result, "import_warnings"))
+    shinyAce::updateAceEditor(session, "editor-code", value = result$raw_source)
+    shiny::removeModal()
+  })
+
+  import_warnings <- shiny::reactiveVal(NULL)
+
+  output$import_warnings_ui <- shiny::renderUI({
+    w <- import_warnings()
+    if (is.null(w) || length(w) == 0L) return(NULL)
+    shiny::div(
+      class = "alert alert-warning mt-2 py-1 px-2 small",
+      shiny::tags$strong("Import warnings:"),
+      shiny::tags$ul(lapply(w, shiny::tags$li))
+    )
+  })
+
+  # ── Export ────────────────────────────────────────────────────
+  shiny::observeEvent(input$export_btn, {
+    exportable <- get_exportable_filters()
+    choices <- stats::setNames(
+      vapply(exportable, `[[`, character(1L), "name"),
+      vapply(exportable, `[[`, character(1L), "label")
+    )
+    has_result <- !is.null(shiny::isolate(solve_result())) &&
+                  !inherits(shiny::isolate(solve_result()), "rhapsody_error")
+    shiny::showModal(shiny::modalDialog(
+      title = "Export",
+      shiny::tags$strong("Export Model"),
+      shiny::radioButtons("export_format", label = NULL, choices = choices),
+      shiny::downloadButton("export_model_dl", "Download",
+                            class = "btn btn-primary btn-sm"),
+      if (has_result) {
+        shiny::tagList(
+          shiny::hr(),
+          shiny::tags$strong("Simulation Output"),
+          shiny::br(),
+          shiny::downloadButton("export_csv_dl", "Download CSV",
+                                class = "btn btn-outline-secondary btn-sm mt-1")
+        )
+      },
+      footer = shiny::modalButton("Cancel"),
+      size   = "s"
+    ))
+  })
+
+  output$export_model_dl <- shiny::downloadHandler(
+    filename = function() {
+      fmt  <- input$export_format
+      filt <- .filter_env[[fmt]]
+      if (is.null(filt)) return("model.dat")
+      paste0("model", filt$ext[[1L]])
+    },
+    content = function(file) {
+      fmt  <- input$export_format
+      filt <- .filter_env[[fmt]]
+      shiny::req(!is.null(filt), !is.null(filt$export))
+      filt$export(ir(), file)
+    }
+  )
+
+  output$export_csv_dl <- shiny::downloadHandler(
+    filename = function() {
+      paste0("simulation-", format(Sys.time(), "%Y%m%d-%H%M%S"), ".csv")
+    },
+    content = function(file) {
+      res <- solve_result()
+      shiny::req(!is.null(res), !inherits(res, "rhapsody_error"))
+      utils::write.csv(as.data.frame(res), file, row.names = FALSE)
+    }
+  )
+
   # ── Session: New ─────────────────────────────────────────────
   shiny::observeEvent(input$new_session, {
     shinyAce::updateAceEditor(session, "editor-code", value = .default_model_code)

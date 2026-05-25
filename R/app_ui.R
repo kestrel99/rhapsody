@@ -9,8 +9,11 @@ app_ui <- function(request) {
       shiny::div(
         class = "d-flex align-items-center gap-2 p-2 bg-light border-bottom",
         shiny::tags$strong("rhapsody", class = "fs-5 me-2"),
-        shiny::actionButton("run",         "Run",  class = "btn btn-primary btn-sm"),
-        shiny::actionButton("new_session", "New",  class = "btn btn-outline-secondary btn-sm"),
+        shiny::actionButton("run",         "Run",    class = "btn btn-primary btn-sm"),
+        shiny::actionButton("import_btn",  "Import", class = "btn btn-outline-secondary btn-sm"),
+        shiny::actionButton("export_btn",  "Export", class = "btn btn-outline-secondary btn-sm"),
+        mod_report_ui("report"),
+        shiny::actionButton("new_session", "New",    class = "btn btn-outline-secondary btn-sm"),
         shiny::downloadButton("session_save", "Save",
                               class = "btn btn-outline-secondary btn-sm"),
         shiny::div(

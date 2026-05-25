@@ -1,0 +1,40 @@
+test_that("desolve_export writes a file containing library(deSolve) and ode_fn", {
+  ir  <- parse_model("dX/dt = r * X\nX[0] = 1\nr = 0.5\nt0 = 0\ntmax = 10\ndt = 0.1")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  expect_true(file.exists(tmp))
+  lines <- readLines(tmp)
+  expect_true(any(grepl("library(deSolve)", lines, fixed = TRUE)))
+  expect_true(any(grepl("ode_fn", lines, fixed = TRUE)))
+  expect_true(any(grepl("params", lines, fixed = TRUE)))
+})
+
+test_that("desolve_export script parses as valid R", {
+  ir  <- parse_model("dX/dt = -k * X\nX[0] = 100\nk = 0.3\nt0 = 0\ntmax = 20\ndt = 0.1")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  expect_no_error(parse(tmp))
+})
+
+test_that("desolve_export script contains correct parameter and IC values", {
+  ir  <- parse_model("dX/dt = -k * X\nX[0] = 100\nk = 0.3\nt0 = 0\ntmax = 20\ndt = 0.1")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  content <- paste(readLines(tmp), collapse = "\n")
+  expect_true(grepl("0.3", content, fixed = TRUE))
+  expect_true(grepl("100", content, fixed = TRUE))
+  expect_true(grepl("-k * X", content, fixed = TRUE) || grepl("-k\\*X", content))
+})
+
+test_that("desolve_export script contains deSolve::ode() call with correct tmax", {
+  ir  <- parse_model("dX/dt = 0\nX[0] = 5\nt0 = 0\ntmax = 77\ndt = 0.5")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  desolve_export(ir, tmp)
+  content <- paste(readLines(tmp), collapse = "\n")
+  expect_true(grepl("77", content, fixed = TRUE))
+  expect_true(grepl("deSolve::ode", content, fixed = TRUE))
+})
