@@ -66,5 +66,11 @@ validate_model <- function(ir) {
       "Combining time-based and state-based events in the same model is not currently supported.")
   }
 
+  # Events (time-based or state-based) are not supported in difference-equation models
+  if (isTRUE(ir$type == "dde") && length(ir$events) > 0L) {
+    errors <- c(errors,
+      "Events (at(...): ...) are not supported in difference-equation models.")
+  }
+
   list(errors = errors, warnings = warnings)
 }

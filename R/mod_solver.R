@@ -52,7 +52,7 @@ mod_solver_ui <- function(id) {
       shiny::div(
         class = "col-4 col-md-4",
         shiny::numericInput(
-          ns("tmax"), "tmax", value = 100, min = 0, step = NA, width = "100%"
+          ns("tmax"), "tmax", value = 100, step = NA, width = "100%"
         )
       ),
       shiny::div(

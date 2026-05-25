@@ -86,3 +86,10 @@ test_that("validate_model: combining time and state events is an error", {
   expect_true(length(result$errors) > 0L)
   expect_true(any(grepl("not currently supported", result$errors)))
 })
+
+test_that("validate_model: events in DDE model is an error", {
+  ir <- parse_model("X[t+1] = 1.1 * X[t]\nX[0] = 1\ntmax = 20\ndt = 1\nat(X > 3): X = 0")
+  result <- validate_model(ir)
+  expect_true(length(result$errors) > 0L)
+  expect_true(any(grepl("difference-equation", result$errors)))
+})

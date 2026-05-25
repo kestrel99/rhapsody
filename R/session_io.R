@@ -27,6 +27,15 @@ session_from_json <- function(path) {
         paste(missing_fields, collapse = ", ")
       ))
     }
+    # Warn if the session was saved with a different package version
+    installed_ver <- as.character(utils::packageVersion("rhapsody"))
+    saved_ver     <- raw$rhapsody_version
+    if (!is.null(saved_ver) && !identical(saved_ver, installed_ver)) {
+      warning(sprintf(
+        "Session was saved with rhapsody %s; currently running %s. Some settings may not apply correctly.",
+        saved_ver, installed_ver
+      ))
+    }
     raw
   }, error = function(e) {
     structure(list(message = conditionMessage(e)), class = "rhapsody_error")
