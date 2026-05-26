@@ -7,10 +7,12 @@ mod_scan_ui <- function(id) {
     class = "p-2",
     shiny::fluidRow(
       shiny::column(3, shiny::uiOutput(ns("param_sel_ui"))),
-      shiny::column(3, shiny::numericInput(ns("from"),  "From", value = 0.5)),
-      shiny::column(3, shiny::numericInput(ns("to"),    "To",   value = 2)),
+      shiny::column(3, shiny::numericInput(ns("from"), "From", value = 0.5)),
+      shiny::column(3, shiny::numericInput(ns("to"),   "To",   value = 2)),
       shiny::column(3,
-        shiny::sliderInput(ns("steps"), "Steps", min = 2, max = 50, value = 8, step = 1)
+        shiny::sliderInput(
+          ns("steps"), "Steps", min = 2, max = 50, value = 8, step = 1
+        )
       )
     ),
     shiny::fluidRow(
@@ -18,8 +20,13 @@ mod_scan_ui <- function(id) {
         shiny::checkboxInput(ns("log_scale"), "Log scale", value = FALSE)
       ),
       shiny::column(4,
-        shiny::selectInput(ns("mode"), "Display",
-          choices = c("Overlay curves" = "overlay", "Parameter plot" = "param_plot"))
+        shiny::selectInput(
+          ns("mode"), "Display",
+          choices = c(
+            "Overlay curves" = "overlay",
+            "Parameter plot" = "param_plot"
+          )
+        )
       )
     ),
     shiny::uiOutput(ns("vars_ui")),
@@ -49,6 +56,18 @@ mod_scan_server <- function(id, ir, param_state) {
                          choices = names(ir()$parameters))
     })
 
+    shiny::observeEvent(input$scan_param, {
+      shiny::req(ir(), nzchar(input$scan_param))
+      p <- ir()$parameters[[input$scan_param]]
+      if (is.null(p)) return()
+      val      <- p$value %||% 1
+      from_val <- if (!is.na(p$range_min)) p$range_min else val * 0.5
+      to_val   <- if (!is.na(p$range_max)) p$range_max else val * 2
+      shiny::updateNumericInput(session,  "from",      value = from_val)
+      shiny::updateNumericInput(session,  "to",        value = to_val)
+      shiny::updateCheckboxInput(session, "log_scale", value = isTRUE(p$log_scale))
+    })
+
     output$vars_ui <- shiny::renderUI({
       shiny::req(ir())
       var_choices <- c(names(ir()$states), names(ir()$auxiliary))
@@ -61,7 +80,10 @@ mod_scan_server <- function(id, ir, param_state) {
     })
 
     shiny::observeEvent(input$run_scan, {
-      shiny::req(ir(), input$scan_param, input$from, input$to, input$steps, input$scan_vars)
+      shiny::req(
+        ir(), input$scan_param, input$from, input$to,
+        input$steps, input$scan_vars
+      )
       scan_error(NULL)
       spec <- list(
         parameter = input$scan_param,
@@ -77,7 +99,10 @@ mod_scan_server <- function(id, ir, param_state) {
           ics       = param_state$ics(),
           scan_spec = spec
         ),
-        error = function(e) { scan_error(conditionMessage(e)); NULL }
+        error = function(e) {
+          scan_error(conditionMessage(e))
+          NULL
+        }
       )
       scan_result(result)
     })
@@ -122,7 +147,9 @@ mod_scan_server <- function(id, ir, param_state) {
           final_vals <- vapply(valid_dfs, function(df) {
             if (vr %in% names(df)) tail(df[[vr]], 1L) else NA_real_
           }, numeric(1L))
-          p <- plotly::add_lines(p, x = valid_vals, y = final_vals, name = vr)
+          p <- plotly::add_lines(
+            p, x = valid_vals, y = final_vals, name = vr
+          )
         }
         p <- plotly::layout(p,
           xaxis = list(title = res$param_name),
