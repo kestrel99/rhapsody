@@ -38,20 +38,23 @@ The app opens in your browser with a Lotka-Volterra predator-prey model loaded. 
 Models are written in a plain-text format:
 
 ```
-# Lotka-Volterra predator-prey
-dX/dt = r * X - a * X * Y
-dY/dt = b * X * Y - m * Y
+# One-compartment PK with oral absorption and Emax PD
+dA/dt = -ka * A
+dC/dt = ka * A / Vd - ke * C
 
-X[0] = 10
-Y[0] = 5
+A[0] = 100
+C[0] = 0
 
-r = 1.2
-a = 0.4
-b = 0.1
-m = 0.8
+ka   = 1.0   # [0.1, 5]
+ke   = 0.2   # [0.05, 1]
+Vd   = 20    # [5, 100]
+Emax = 10    # [1, 20]
+EC50 = 2     # [0.1, 10]
+
+E = Emax * C / (EC50 + C)
 
 t0   = 0
-tmax = 100
+tmax = 24
 dt   = 0.1
 ```
 

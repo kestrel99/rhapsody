@@ -16,16 +16,14 @@ app_ui <- function(request) {
         shiny::actionButton("new_session", "New",    class = "btn btn-outline-secondary btn-sm"),
         shiny::downloadButton("session_save", "Save",
                               class = "btn btn-outline-secondary btn-sm"),
+        shiny::tags$button(
+          "Load",
+          class   = "btn btn-outline-secondary btn-sm",
+          onclick = "$('#session_load').click();"
+        ),
         shiny::div(
-          class = "btn btn-outline-secondary btn-sm p-0",
-          style = "overflow: hidden; line-height: 1;",
-          shiny::fileInput(
-            "session_load", label = NULL,
-            accept      = ".rhy",
-            buttonLabel = "Load",
-            placeholder = "",
-            width       = "100px"
-          )
+          style = "display: none;",
+          shiny::fileInput("session_load", label = NULL, accept = ".rhy")
         )
       ),
 
