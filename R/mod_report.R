@@ -11,10 +11,8 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
   shiny::moduleServer(id, function(input, output, session) {
 
     shiny::observeEvent(input$btn, {
-      has_result <- local({
-        r <- shiny::isolate(solve_result())
-        !is.null(r) && !inherits(r, "rhapsody_error")
-      })
+      r          <- shiny::isolate(solve_result())
+      has_result <- !is.null(r) && !inherits(r, "rhapsody_error")
       default_sections <- if (has_result) {
         c("model", "params", "plot", "table")
       } else {
@@ -50,7 +48,13 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
       function(file) {
         shiny::req(ir())
         template <- system.file("templates", "report.Rmd", package = "rhapsody")
-        if (!file.exists(template)) stop("report.Rmd template not found in package.")
+        if (!file.exists(template)) {
+          shiny::showNotification(
+            "report.Rmd template not found in package.",
+            type = "error", duration = 8
+          )
+          stop("report.Rmd template not found in package.")
+        }
 
         ir_val <- ir()
         res    <- solve_result()
@@ -60,32 +64,42 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
           NULL
         }
 
-        params_df <- data.frame(
-          name  = names(ir_val$parameters),
-          value = vapply(ir_val$parameters, `[[`, numeric(1L), "value"),
-          min   = vapply(ir_val$parameters,
-                         function(p) if (is.na(p$range_min)) NA_real_ else p$range_min,
-                         numeric(1L)),
-          max   = vapply(ir_val$parameters,
-                         function(p) if (is.na(p$range_max)) NA_real_ else p$range_max,
-                         numeric(1L)),
-          stringsAsFactors = FALSE
-        )
+        if (length(ir_val$parameters) == 0L) {
+          params_df <- data.frame(name = character(0), value = numeric(0),
+                                   min  = numeric(0),   max   = numeric(0),
+                                   stringsAsFactors = FALSE)
+        } else {
+          params_df <- data.frame(
+            name  = names(ir_val$parameters),
+            value = vapply(ir_val$parameters, `[[`, numeric(1L), "value"),
+            min   = vapply(ir_val$parameters,
+                           function(p) if (is.na(p$range_min)) NA_real_ else p$range_min,
+                           numeric(1L)),
+            max   = vapply(ir_val$parameters,
+                           function(p) if (is.na(p$range_max)) NA_real_ else p$range_max,
+                           numeric(1L)),
+            stringsAsFactors = FALSE
+          )
+        }
+
+        sections <- shiny::isolate(input$sections) %||% character(0L)
+        title    <- shiny::isolate(input$title)
+        author   <- shiny::isolate(input$author)
 
         rmarkdown::render(
           input         = template,
           output_format = output_format,
           output_file   = file,
           params        = list(
-            report_title  = if (nzchar(trimws(input$title))) input$title else "rhapsody Report",
-            report_author = input$author,
+            report_title  = if (nzchar(trimws(title))) title else "rhapsody Report",
+            report_author = author,
             report_date   = format(Sys.Date()),
             model_source  = ir_val$raw_source,
             params_df     = params_df,
             sim_data      = sim_df,
-            sections      = input$sections
+            sections      = sections
           ),
-          envir = new.env(parent = globalenv()),
+          envir = new.env(parent = baseenv()),
           quiet = TRUE
         )
       }

@@ -53,8 +53,7 @@ test_that("report.Rmd renders to HTML without error", {
     )
   )
   expect_true(file.exists(out))
-  content <- paste(readLines(out), collapse = "\n")
-  expect_true(nzchar(content))
+  expect_gt(file.size(out), 0L)
 })
 
 test_that("report.Rmd renders to Word (.docx) without error", {
