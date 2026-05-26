@@ -105,10 +105,7 @@ app_server <- function(input, output, session) {
   mod_report_server("report", ir, param_state, solve_result)
 
   # ── Import ────────────────────────────────────────────────────
-  import_warnings <- shiny::reactiveVal(NULL)
-
   shiny::observeEvent(input$import_btn, {
-    import_warnings(NULL)
     importable <- get_importable_filters()
     exts <- unique(unlist(lapply(importable, `[[`, "ext")))
     accept_str <- paste(exts, collapse = ",")
@@ -120,7 +117,6 @@ app_server <- function(input, output, session) {
         buttonLabel = "Choose file…",
         placeholder = "No file selected"
       ),
-      shiny::uiOutput("import_warnings_ui"),
       footer = shiny::modalButton("Cancel"),
       size   = "s"
     ))
@@ -147,19 +143,18 @@ app_server <- function(input, output, session) {
       )
       return()
     }
-    import_warnings(attr(result, "import_warnings"))
+    w <- attr(result, "import_warnings")
     shinyAce::updateAceEditor(session, "editor-code", value = result$raw_source)
     shiny::removeModal()
-  })
-
-  output$import_warnings_ui <- shiny::renderUI({
-    w <- import_warnings()
-    if (is.null(w) || length(w) == 0L) return(NULL)
-    shiny::div(
-      class = "alert alert-warning mt-2 py-1 px-2 small",
-      shiny::tags$strong("Import warnings:"),
-      shiny::tags$ul(lapply(w, shiny::tags$li))
-    )
+    if (!is.null(w) && length(w) > 0L) {
+      shiny::showNotification(
+        shiny::tagList(
+          shiny::tags$strong("Import warnings:"),
+          shiny::tags$ul(lapply(w, shiny::tags$li))
+        ),
+        type = "warning", duration = 15
+      )
+    }
   })
 
   # ── Export ────────────────────────────────────────────────────
@@ -195,16 +190,22 @@ app_server <- function(input, output, session) {
 
   output$export_model_dl <- shiny::downloadHandler(
     filename = function() {
-      fmt  <- input$export_format
-      filt <- filter_by_name(fmt)
+      filt <- filter_by_name(input$export_format)
       if (is.null(filt)) return("model.dat")
       paste0("model", filt$ext[[1L]])
     },
     content = function(file) {
-      fmt  <- input$export_format
-      filt <- filter_by_name(fmt)
+      filt <- filter_by_name(input$export_format)
       shiny::req(!is.null(filt), !is.null(filt$export))
-      filt$export(ir(), file)
+      tryCatch(
+        filt$export(ir(), file),
+        error = function(e) {
+          shiny::showNotification(
+            paste("Export failed:", conditionMessage(e)),
+            type = "error", duration = 8
+          )
+        }
+      )
     }
   )
 

@@ -2,6 +2,10 @@
 # The script requires only base R and deSolve — no rhapsody dependency.
 #' @noRd
 desolve_export <- function(ir, path) {
+  if (!isTRUE(ir$type == "ode")) {
+    stop("deSolve export requires an ODE model (d/dt syntax). ",
+         "Difference-equation models are not supported.")
+  }
   state_names <- names(ir$states)
   param_names <- names(ir$parameters)
 

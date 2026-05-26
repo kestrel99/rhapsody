@@ -64,6 +64,7 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
           NULL
         }
 
+        live_params <- param_state$params()
         if (length(ir_val$parameters) == 0L) {
           params_df <- data.frame(name = character(0), value = numeric(0),
                                    min  = numeric(0),   max   = numeric(0),
@@ -71,7 +72,10 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
         } else {
           params_df <- data.frame(
             name  = names(ir_val$parameters),
-            value = vapply(ir_val$parameters, `[[`, numeric(1L), "value"),
+            value = vapply(names(ir_val$parameters), function(nm) {
+              v <- live_params[[nm]]
+              if (!is.null(v)) as.numeric(v) else ir_val$parameters[[nm]]$value
+            }, numeric(1L)),
             min   = vapply(ir_val$parameters,
                            function(p) if (is.na(p$range_min)) NA_real_ else p$range_min,
                            numeric(1L)),
@@ -125,7 +129,15 @@ mod_report_server <- function(id, ir, param_state, solve_result) {
       },
       content = function(file) {
         shiny::req(ir())
-        desolve_export(ir(), file)
+        tryCatch(
+          desolve_export(ir(), file),
+          error = function(e) {
+            shiny::showNotification(
+              paste("R script export failed:", conditionMessage(e)),
+              type = "error", duration = 8
+            )
+          }
+        )
       }
     )
   })

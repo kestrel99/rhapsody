@@ -68,3 +68,10 @@ test_that("desolve_export handles a model with no parameters", {
   content <- paste(readLines(tmp), collapse = "\n")
   expect_true(grepl("library(deSolve)", content, fixed = TRUE))
 })
+
+test_that("desolve_export returns an error for difference-equation (DDE) models", {
+  ir <- parse_model("X[t+1] = X[t] * 1.1\nX[0] = 10\nt0 = 0\ntmax = 20\ndt = 1")
+  tmp <- tempfile(fileext = ".R")
+  on.exit(unlink(tmp))
+  expect_error(desolve_export(ir, tmp), "ODE model")
+})
