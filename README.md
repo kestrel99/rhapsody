@@ -31,7 +31,7 @@ library(rhapsody)
 rhapsody::run_app()
 ```
 
-The app opens in your browser with a Lotka-Volterra predator-prey model loaded. Edit the model, adjust sliders, and click **Run**.
+The app opens in your browser with a one-compartment PK/PD model loaded. Edit the model, adjust sliders, and click **Run**.
 
 ## Model Syntax
 
