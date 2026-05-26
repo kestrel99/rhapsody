@@ -17,6 +17,9 @@ Imports:
     rootSolve,
     plotly,
     jsonlite,
+    rmarkdown,
+    knitr,
+    ggplot2,
     golem
 Suggests:
     testthat (>= 3.0.0)

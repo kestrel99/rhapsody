@@ -1,0 +1,61 @@
+---
+title: "`r params$report_title`"
+author: "`r if (nzchar(params$report_author)) params$report_author`"
+date: "`r params$report_date`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  word_document:
+    toc: true
+params:
+  report_title: "rhapsody Report"
+  report_author: ""
+  report_date: ""
+  model_source: ""
+  params_df: NULL
+  sim_data: NULL
+  sections: !r c("model", "params", "plot", "table")
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r model-section, results='asis', eval = "model" %in% params$sections}
+cat("## Model Source\n\n")
+cat("```\n")
+cat(params$model_source)
+cat("\n```\n\n")
+```
+
+```{r params-section, results='asis', eval = "params" %in% params$sections && !is.null(params$params_df) && nrow(params$params_df) > 0}
+cat("## Parameters\n\n")
+knitr::kable(params$params_df, col.names = c("Name", "Value", "Min", "Max"),
+             digits = 6, caption = "Current parameter values")
+```
+
+```{r plot-section, results='asis', eval = "plot" %in% params$sections && !is.null(params$sim_data)}
+cat("## Time-Series Plot\n\n")
+```
+
+```{r plot-render, fig.width=8, fig.height=5, eval = "plot" %in% params$sections && !is.null(params$sim_data)}
+library(ggplot2)
+df   <- params$sim_data
+vars <- setdiff(names(df), "time")
+long <- do.call(rbind, lapply(vars, function(v) {
+  data.frame(time = df[["time"]], variable = v, value = df[[v]],
+             stringsAsFactors = FALSE)
+}))
+ggplot(long, aes(x = .data[["time"]], y = .data[["value"]],
+                 colour = .data[["variable"]])) +
+  geom_line() +
+  labs(x = "Time", y = "Value", colour = "Variable") +
+  theme_minimal()
+```
+
+```{r table-section, results='asis', eval = "table" %in% params$sections && !is.null(params$sim_data)}
+cat("## Simulation Output\n\n")
+knitr::kable(head(as.data.frame(params$sim_data), 20), digits = 6,
+             caption = "First 20 rows of simulation output")
+```
