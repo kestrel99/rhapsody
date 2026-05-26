@@ -30,8 +30,12 @@ mod_scan_ui <- function(id) {
       )
     ),
     shiny::uiOutput(ns("vars_ui")),
-    shiny::actionButton(ns("run_scan"), "Run Scan",
-                        class = "btn btn-secondary btn-sm mb-2"),
+    shiny::div(
+      class = "d-flex gap-2 mb-2",
+      shiny::actionButton(ns("run_scan"), "Run Scan",
+                          class = "btn btn-secondary btn-sm"),
+      shiny::uiOutput(ns("csv_dl_ui"))
+    ),
     shiny::uiOutput(ns("scan_error_ui")),
     plotly::plotlyOutput(ns("scan_plot"), height = "280px")
   )
@@ -106,6 +110,46 @@ mod_scan_server <- function(id, ir, param_state) {
       )
       scan_result(result)
     })
+
+    output$csv_dl_ui <- shiny::renderUI({
+      res <- scan_result()
+      if (is.null(res)) return(NULL)
+      shiny::downloadButton(
+        session$ns("scan_csv"), "Download CSV",
+        class = "btn btn-outline-secondary btn-sm"
+      )
+    })
+
+    output$scan_csv <- shiny::downloadHandler(
+      filename = function() {
+        res <- scan_result()
+        paste0("scan-", res$param_name, "-",
+               format(Sys.time(), "%Y%m%d-%H%M%S"), ".csv")
+      },
+      content = function(file) {
+        res  <- scan_result()
+        vars <- shiny::isolate(input$scan_vars)
+        shiny::req(!is.null(res), length(vars) > 0L)
+        ok_mask    <- !vapply(
+          res$results, inherits, logical(1L), "rhapsody_error"
+        )
+        valid_dfs  <- res$results[ok_mask]
+        valid_vals <- res$param_values[ok_mask]
+        shiny::req(length(valid_dfs) > 0L)
+        time_vec <- valid_dfs[[1L]]$time
+        out <- data.frame(time = time_vec, check.names = FALSE)
+        for (i in seq_along(valid_dfs)) {
+          df  <- valid_dfs[[i]]
+          pv  <- signif(valid_vals[i], 6L)
+          lbl <- paste0(res$param_name, "=", pv)
+          for (vr in vars) {
+            if (!vr %in% names(df)) next
+            out[[paste0(vr, "[", lbl, "]")]] <- df[[vr]]
+          }
+        }
+        utils::write.csv(out, file, row.names = FALSE)
+      }
+    )
 
     output$scan_error_ui <- shiny::renderUI({
       err <- scan_error()
