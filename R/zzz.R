@@ -12,4 +12,11 @@
     ext    = ".R",
     export = desolve_export
   )
+  register_filter(
+    name   = "mmd",
+    label  = "Berkeley Madonna (.mmd)",
+    ext    = ".mmd",
+    import = mmd_import,
+    export = mmd_export
+  )
 }
