@@ -39,7 +39,8 @@ scan_params <- function(ir, params = NULL, ics = NULL, scan_spec) {
   }
 
   results <- lapply(param_values, function(pv) {
-    p_override <- c(as.list(params %||% list()), setNames(list(pv), param_nm))
+    p_override <- params %||% list()
+    p_override[[param_nm]] <- pv
     tryCatch({
       if (isTRUE(ir$type == "dde")) {
         solve_discrete(ir, params = p_override, ics = ics)
