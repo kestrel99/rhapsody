@@ -49,19 +49,20 @@ app_ui <- function(request) {
           )
         ),
 
-        # Right column: plot (flex-grow) + tab panel (fixed)
+        # Right column: plot (flex-grow) + tab panel (scrollable, capped at 55%)
         shiny::div(
           style = paste(
             "display: flex;",
             "flex-direction: column;",
-            "height: calc(100vh - 58px);"
+            "height: calc(100vh - 58px);",
+            "overflow: hidden;"
           ),
           shiny::div(
             style = "flex: 1 1 0; min-height: 0; padding: 0.75rem;",
             mod_plot_ui("plot")
           ),
           shiny::div(
-            style = "flex: 0 0 auto; border-top: 1px solid #dee2e6;",
+            style = "flex: 0 0 auto; max-height: 55%; overflow-y: auto; border-top: 1px solid #dee2e6;",
             bslib::navset_tab(
               bslib::nav_panel(
                 "Solver",
