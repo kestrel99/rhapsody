@@ -27,7 +27,8 @@ mod_scan_ui <- function(id) {
             "Parameter plot" = "param_plot"
           )
         )
-      )
+      ),
+      shiny::column(4, shiny::uiOutput(ns("xaxis_ui")))
     ),
     shiny::uiOutput(ns("vars_ui")),
     shiny::div(
@@ -67,9 +68,11 @@ mod_scan_server <- function(id, ir, param_state) {
       val      <- p$value %||% 1
       from_val <- if (!is.na(p$range_min)) p$range_min else val * 0.5
       to_val   <- if (!is.na(p$range_max)) p$range_max else val * 2
-      shiny::updateNumericInput(session,  "from",      value = from_val)
-      shiny::updateNumericInput(session,  "to",        value = to_val)
-      shiny::updateCheckboxInput(session, "log_scale", value = isTRUE(p$log_scale))
+      shiny::updateNumericInput(session, "from", value = from_val)
+      shiny::updateNumericInput(session, "to",   value = to_val)
+      shiny::updateCheckboxInput(
+        session, "log_scale", value = isTRUE(p$log_scale)
+      )
     })
 
     output$vars_ui <- shiny::renderUI({
@@ -80,6 +83,20 @@ mod_scan_server <- function(id, ir, param_state) {
         choices  = var_choices,
         selected = var_choices[1L],
         inline   = TRUE
+      )
+    })
+
+    output$xaxis_ui <- shiny::renderUI({
+      res <- scan_result()
+      if (is.null(input$mode) || input$mode != "overlay") return(NULL)
+      if (is.null(res)) return(NULL)
+      ok_mask   <- !vapply(res$results, inherits, logical(1L), "rhapsody_error")
+      first_df  <- res$results[ok_mask][[1L]]
+      if (is.null(first_df)) return(NULL)
+      choices <- c("time", setdiff(names(first_df), "time"))
+      shiny::selectInput(
+        session$ns("xvar"), "X axis",
+        choices = choices, selected = "time", width = "100px"
       )
     })
 
@@ -164,7 +181,9 @@ mod_scan_server <- function(id, ir, param_state) {
         return(plotly::plotly_empty())
       }
 
-      ok_mask    <- !vapply(res$results, inherits, logical(1L), "rhapsody_error")
+      ok_mask    <- !vapply(
+        res$results, inherits, logical(1L), "rhapsody_error"
+      )
       valid_dfs  <- res$results[ok_mask]
       valid_vals <- res$param_values[ok_mask]
       if (length(valid_dfs) == 0L) return(plotly::plotly_empty())
@@ -172,19 +191,25 @@ mod_scan_server <- function(id, ir, param_state) {
       p <- plotly::plot_ly()
 
       if (input$mode == "overlay") {
+        xvar <- if (!is.null(input$xvar) &&
+                    input$xvar %in% names(valid_dfs[[1L]])) {
+          input$xvar
+        } else {
+          "time"
+        }
         for (i in seq_along(valid_dfs)) {
           df <- valid_dfs[[i]]
           pv <- signif(valid_vals[i], 4L)
           for (vr in vars) {
-            if (!vr %in% names(df)) next
+            if (!vr %in% names(df) || vr == xvar) next
             p <- plotly::add_lines(
-              p, x = df$time, y = df[[vr]],
+              p, x = df[[xvar]], y = df[[vr]],
               name = paste0(vr, " (", res$param_name, "=", pv, ")")
             )
           }
         }
         p <- plotly::layout(p,
-          xaxis = list(title = "Time"),
+          xaxis = list(title = xvar),
           yaxis = list(title = "Value"))
       } else {
         for (vr in vars) {
