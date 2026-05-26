@@ -1,6 +1,6 @@
 # rhapsody
 
-A domain-agnostic ODE and difference-equation simulator with an interactive Shiny GUI. rhapsody is designed to replicate the core workflow of [Berkeley Madonna](https://berkeleymadonna.com/): write a model in plain text, explore it interactively with sliders, and export results — without writing boilerplate solver code.
+A domain-agnostic ODE and difference-equation simulator with an interactive Shiny GUI. rhapsody is designed to facilitate writing a model in plain text, exploring it interactively with sliders, and export results, without writing boilerplate solver code.
 
 ## Features
 
@@ -28,7 +28,7 @@ remotes::install_github("kestrel99/rhapsody")
 
 ```r
 library(rhapsody)
-run_app()
+rhapsody::run_app()
 ```
 
 The app opens in your browser with a Lotka-Volterra predator-prey model loaded. Edit the model, adjust sliders, and click **Run**.
@@ -79,6 +79,3 @@ dt   = 0.1
 | jsonlite | Session file format |
 | golem | App packaging |
 
-## License
-
-MIT
