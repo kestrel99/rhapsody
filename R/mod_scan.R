@@ -32,13 +32,14 @@ mod_scan_ui <- function(id) {
     ),
     shiny::uiOutput(ns("vars_ui")),
     shiny::div(
-      class = "d-flex gap-2 mb-2",
+      class = "d-flex align-items-center gap-2 mb-2",
       shiny::actionButton(ns("run_scan"), "Run Scan",
                           class = "btn btn-secondary btn-sm"),
+      shiny::uiOutput(ns("view_toggle_ui")),
       shiny::uiOutput(ns("csv_dl_ui"))
     ),
     shiny::uiOutput(ns("scan_error_ui")),
-    plotly::plotlyOutput(ns("scan_plot"), height = "280px")
+    shiny::uiOutput(ns("scan_output_ui"))
   )
 }
 
@@ -54,6 +55,7 @@ mod_scan_server <- function(id, ir, param_state) {
 
     scan_result <- shiny::reactiveVal(NULL)
     scan_error  <- shiny::reactiveVal(NULL)
+    show_data   <- shiny::reactiveVal(FALSE)
 
     output$param_sel_ui <- shiny::renderUI({
       shiny::req(ir())
@@ -90,8 +92,8 @@ mod_scan_server <- function(id, ir, param_state) {
       res <- scan_result()
       if (is.null(input$mode) || input$mode != "overlay") return(NULL)
       if (is.null(res)) return(NULL)
-      ok_mask   <- !vapply(res$results, inherits, logical(1L), "rhapsody_error")
-      first_df  <- res$results[ok_mask][[1L]]
+      ok_mask  <- !vapply(res$results, inherits, logical(1L), "rhapsody_error")
+      first_df <- res$results[ok_mask][[1L]]
       if (is.null(first_df)) return(NULL)
       choices <- c("time", setdiff(names(first_df), "time"))
       shiny::selectInput(
@@ -126,11 +128,50 @@ mod_scan_server <- function(id, ir, param_state) {
         }
       )
       scan_result(result)
+      show_data(FALSE)
     })
 
+    # ── Shared wide-format data.frame ─────────────────────────────
+    scan_wide <- shiny::reactive({
+      res  <- scan_result()
+      vars <- input$scan_vars
+      if (is.null(res) || is.null(vars) || length(vars) == 0L) return(NULL)
+      ok_mask    <- !vapply(
+        res$results, inherits, logical(1L), "rhapsody_error"
+      )
+      valid_dfs  <- res$results[ok_mask]
+      valid_vals <- res$param_values[ok_mask]
+      if (length(valid_dfs) == 0L) return(NULL)
+      out <- data.frame(time = valid_dfs[[1L]]$time, check.names = FALSE)
+      for (i in seq_along(valid_dfs)) {
+        df  <- valid_dfs[[i]]
+        pv  <- signif(valid_vals[i], 6L)
+        lbl <- paste0(res$param_name, "=", pv)
+        for (vr in vars) {
+          if (!vr %in% names(df)) next
+          out[[paste0(vr, "[", lbl, "]")]] <- df[[vr]]
+        }
+      }
+      out
+    })
+
+    # ── Toggle ────────────────────────────────────────────────────
+    output$view_toggle_ui <- shiny::renderUI({
+      if (is.null(scan_result())) return(NULL)
+      shiny::actionButton(
+        session$ns("toggle_view"),
+        label = if (show_data()) "Plot" else "Data",
+        class = "btn btn-outline-secondary btn-sm"
+      )
+    })
+
+    shiny::observeEvent(input$toggle_view, {
+      show_data(!show_data())
+    })
+
+    # ── CSV download ──────────────────────────────────────────────
     output$csv_dl_ui <- shiny::renderUI({
-      res <- scan_result()
-      if (is.null(res)) return(NULL)
+      if (is.null(scan_result())) return(NULL)
       shiny::downloadButton(
         session$ns("scan_csv"), "Download CSV",
         class = "btn btn-outline-secondary btn-sm"
@@ -144,26 +185,8 @@ mod_scan_server <- function(id, ir, param_state) {
                format(Sys.time(), "%Y%m%d-%H%M%S"), ".csv")
       },
       content = function(file) {
-        res  <- scan_result()
-        vars <- shiny::isolate(input$scan_vars)
-        shiny::req(!is.null(res), length(vars) > 0L)
-        ok_mask    <- !vapply(
-          res$results, inherits, logical(1L), "rhapsody_error"
-        )
-        valid_dfs  <- res$results[ok_mask]
-        valid_vals <- res$param_values[ok_mask]
-        shiny::req(length(valid_dfs) > 0L)
-        time_vec <- valid_dfs[[1L]]$time
-        out <- data.frame(time = time_vec, check.names = FALSE)
-        for (i in seq_along(valid_dfs)) {
-          df  <- valid_dfs[[i]]
-          pv  <- signif(valid_vals[i], 6L)
-          lbl <- paste0(res$param_name, "=", pv)
-          for (vr in vars) {
-            if (!vr %in% names(df)) next
-            out[[paste0(vr, "[", lbl, "]")]] <- df[[vr]]
-          }
-        }
+        out <- shiny::isolate(scan_wide())
+        shiny::req(!is.null(out))
         utils::write.csv(out, file, row.names = FALSE)
       }
     )
@@ -173,6 +196,29 @@ mod_scan_server <- function(id, ir, param_state) {
       if (is.null(err)) return(NULL)
       shiny::div(class = "alert alert-danger py-1 px-2 small", err)
     })
+
+    # ── Plot / Data output ────────────────────────────────────────
+    output$scan_output_ui <- shiny::renderUI({
+      if (isTRUE(show_data())) {
+        shiny::div(
+          style = "overflow: auto; max-height: 280px; font-size: 0.75rem;",
+          shiny::tableOutput(session$ns("scan_table"))
+        )
+      } else {
+        plotly::plotlyOutput(session$ns("scan_plot"), height = "280px")
+      }
+    })
+
+    output$scan_table <- shiny::renderTable(
+      scan_wide(),
+      digits    = 4L,
+      striped   = TRUE,
+      hover     = TRUE,
+      bordered  = FALSE,
+      spacing   = "xs",
+      width     = "100%",
+      na        = ""
+    )
 
     output$scan_plot <- plotly::renderPlotly({
       res  <- scan_result()
